@@ -97,6 +97,7 @@ entity User {=psl
   contactFormMessages       ContactFormMessage[]     
   tasks                     Task[]
   files                     File[]
+  Transactions              Transaction[]               
 psl=}
 
 entity GptResponse {=psl
@@ -171,6 +172,22 @@ entity Logs {=psl
   level                    String
 psl=}
 
+entity Transaction {=psl
+  id            Int      @id @default(autoincrement())
+  type          String
+  fiatCurrency  String
+  cryptoCurrency String
+  amountFiat    Decimal
+  exchangeRate  Decimal
+  commission    Decimal
+  amountCrypto  Decimal
+  createdAt     DateTime        @default(now())
+  status        String
+  user                      User            @relation(fields: [userId], references: [id])
+  userId                    Int
+psl=}
+
+
 /* 📡 These are the Wasp Routes (You can protect them easily w/ 'authRequired: true');
  * https://wasp-lang.dev/docs/tutorial/pages
  */
@@ -210,6 +227,19 @@ page DemoAppPage {
   authRequired: true,
   component: import DemoAppPage from "@src/client/app/DemoAppPage"
 }
+
+route AddTransactionRoute { path: "/add-transaction", to: AddTransactionPage }
+page AddTransactionPage {
+  authRequired: true,
+  component: import AddTransactionPage from "@src/client/app/AddTransactionPage"
+}
+
+route TransactionsRoute { path: "/transactions", to: TransactionsPage }
+page TransactionsPage {
+  authRequired: true,
+  component: import TransactionsPage from "@src/client/app/TransactionsPage"
+}
+
 
 route PricingPageRoute { path: "/pricing", to: PricingPage }
 page PricingPage {
@@ -340,6 +370,10 @@ action createFile {
   entities: [User, File]
 }
 
+action createTransaction {
+  fn: import { createTransaction } from "@src/server/actions.js",
+  entities: [Transaction, User]
+}
 
 // 📚 Queries
 
@@ -371,6 +405,10 @@ query getDailyStats {
 query getPaginatedUsers {
   fn: import { getPaginatedUsers } from "@src/server/queries.js",
   entities: [User]
+}
+
+query getTransactionsByUser {
+  fn: import { getAllTransactionsByUser } from "@src/server/queries.js"
 }
 
 /*
@@ -411,3 +449,10 @@ job dailyStatsJob {
   },
   entities: [User, DailyStats, Logs, PageViewSource]
 }
+
+
+
+
+
+
+

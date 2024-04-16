@@ -1,4 +1,4 @@
-import { type DailyStats, type GptResponse, type User, type PageViewSource, type Task, type File } from 'wasp/entities';
+import { type DailyStats, type GptResponse, type User, type PageViewSource, type Task, type File, type Transaction } from 'wasp/entities';
 import { HttpError } from 'wasp/server';
 import {
   type GetGptResponses,
@@ -6,6 +6,7 @@ import {
   type GetPaginatedUsers,
   type GetAllTasksByUser,
   type GetAllFilesByUser,
+  type getTransactionsByUser,
   type GetDownloadFileSignedURL,
 } from 'wasp/server/operations';
 import { getDownloadFileSignedURLFromS3 } from './file-upload/s3Utils.js';
@@ -164,3 +165,44 @@ export const getPaginatedUsers: GetPaginatedUsers<GetPaginatedUsersInput, GetPag
     totalPages,
   };
 };
+
+
+// queries.js
+export const getAllTransactionsByUser = async ({ userId, transactionId, startDate, endDate, orderBy = 'createdAt', orderDirection = 'desc' }, context) => {
+  if (!context.user) {
+    throw new HttpError(401, 'User must be logged in to access transactions.');
+  }
+
+  try {
+    const whereConditions = {
+      userId: userId,
+      ...(transactionId && { id: transactionId }),
+      ...(startDate && endDate && {
+        createdAt: {
+          gte: new Date(startDate),
+          lte: new Date(endDate)
+        }
+      }),
+    };
+
+    const transactions = await context.entities.Transaction.findMany({
+      where: whereConditions,
+      orderBy: {
+        [orderBy]: orderDirection,
+      }
+    });
+
+    const count = await context.entities.Transaction.count({
+      where: whereConditions,
+    });
+
+    return {
+      transactions: transactions,
+      count: count
+    };
+  } catch (error) {
+    console.error('Failed to fetch transactions:', error);
+    throw new HttpError(500, 'Internal Server Error');
+  }
+};
+

@@ -1,5 +1,6 @@
-import { type User, type Task, type File } from 'wasp/entities';
+import { type User, type Task, type File, type Transaction } from 'wasp/entities';
 import { HttpError } from 'wasp/server';
+
 import {
   type GenerateGptResponse,
   type StripePayment,
@@ -24,6 +25,53 @@ function setupOpenAI() {
   }
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
+
+export const createTransaction = async ({ data }, context) => {
+  // Validate input
+  const validTypes = ['SELL', 'BUY'];
+  const validFiatCurrencies = ['EUR', 'USD', 'PLN', 'CHF'];
+  const validCryptoCurrencies = ['USDT', 'BTC'];
+  const validStatuses = ['NEW', 'In Progress', 'Done', 'Cancelled', 'Deleted'];
+
+  if (!validTypes.includes(data.type)) {
+    throw new Error('Invalid transaction type');
+  }
+  if (!validFiatCurrencies.includes(data.fiatCurrency)) {
+    throw new Error('Invalid fiat currency');
+  }
+  // ...similar checks for cryptoCurrency and status...
+
+  // If input is valid, proceed with creating the transaction
+  const createdTransaction = await context.entities.Transaction.create({
+    data: {
+      type: data.type,
+      fiatCurrency: data.fiatCurrency,
+      cryptoCurrency: data.cryptoCurrency,
+      amountFiat: data.amountFiat,
+      exchangeRate: data.exchangeRate,
+      commission: data.commission,
+      amountCrypto: data.amountCrypto,
+      status: data.status,
+      user: { connect: { id: context.user.id } }
+    }
+  });
+
+  return createdTransaction;
+};
+
+export const getTransactions = async (context: {
+  entities: any; user: User 
+}) => {
+  if (!context.user) throw new HttpError(401, 'Unauthorized');
+
+  const userTransactions = await context.entities.Transaction.findMany({
+    where: {
+      user: { id: context.user.id }
+    }
+  });
+
+  return userTransactions;
+};
 
 export const stripePayment: StripePayment<string, StripePaymentResult> = async (tier, context) => {
   if (!context.user) {
