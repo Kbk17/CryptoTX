@@ -6,7 +6,7 @@ import {
   type GetPaginatedUsers,
   type GetAllTasksByUser,
   type GetAllFilesByUser,
-  type getTransactionsByUser,
+  type GetPaginatedTransactions,
   type GetDownloadFileSignedURL,
 } from 'wasp/server/operations';
 import { getDownloadFileSignedURLFromS3 } from './file-upload/s3Utils.js';
@@ -166,18 +166,89 @@ export const getPaginatedUsers: GetPaginatedUsers<GetPaginatedUsersInput, GetPag
   };
 };
 
+export type GetPaginatedTransactionsInput = {
+  skip: number;
+  limit: number;
+  typeFilter?: string;
+  statusFilter?: string[];
+};
 
-// queries.js
-export const getAllTransactionsByUser = async ({ userId, transactionId, startDate, endDate, orderBy = 'createdAt', orderDirection = 'desc' }, context) => {
+export type GetPaginatedTransactionsOutput = {
+  transactions: {
+    id: number;
+    type: string;
+    fiatCurrency: string;
+    cryptoCurrency: string;
+    amountFiat: string; // Formatted string with fixed decimal places
+    exchangeRate: string; // Formatted string with fixed decimal places
+    commission: string; // Formatted string with fixed decimal places
+    amountCrypto: string; // Formatted string with fixed decimal places
+    createdAt: Date;
+    status: string;
+    userId: number;
+  }[];
+  totalPages: number;
+};
+
+export const getPaginatedTransactions: GetPaginatedTransactions<GetPaginatedTransactionsInput, GetPaginatedTransactionsOutput> = async (
+  args,
+  context
+) => {
+  if (!context.user) {
+    throw new HttpError(401, "User must be logged in to access their transactions.");
+  }
+
+  const whereClause: any = { userId: context.user.id };
+  if (args.typeFilter) whereClause.type = args.typeFilter;
+  if (args.statusFilter) whereClause.status = { in: args.statusFilter };
+
+  const transactions = await context.entities.Transaction.findMany({
+    skip: args.skip,
+    take: args.limit,
+    where: whereClause,
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const totalTransactionsCount = await context.entities.Transaction.count({ where: whereClause });
+  const totalPages = Math.ceil(totalTransactionsCount / args.limit);
+
+  return {
+    transactions: transactions.map(tran => ({
+      ...tran,
+      amountFiat: tran.amountFiat.toFixed(2), // Assuming amountFiat is still a Decimal type in the ORM
+      exchangeRate: tran.exchangeRate.toFixed(4),
+      commission: tran.commission.toFixed(2),
+      amountCrypto: tran.amountCrypto.toFixed(4),
+      createdAt: tran.createdAt,
+      status: tran.status,
+      userId: tran.userId
+    })),
+    totalPages
+  };
+};
+
+
+
+
+/* queries.js
+export const getAllTransactionsByUser = async ({ transactionId, startDate, endDate, orderBy = 'createdAt', orderDirection = 'desc' }, context) => {
+  // Ensure the user is logged in
   if (!context.user) {
     throw new HttpError(401, 'User must be logged in to access transactions.');
   }
 
+  // Check if the Transaction entity is available in the context
+  if (!context.entities || !context.entities.Transaction) {
+    console.error("Transaction entity is not available in context.");
+    throw new HttpError(500, "Transaction entity is not initialized.");
+  }
+
   try {
+    // Define where conditions using the user ID from the context
     const whereConditions = {
-      userId: userId,
-      ...(transactionId && { id: transactionId }),
-      ...(startDate && endDate && {
+      userId: context.user.id,  // Use the logged-in user's ID directly
+      ...(transactionId && { id: transactionId }),  // Add transaction ID condition if provided
+      ...(startDate && endDate && {  // Date range filter
         createdAt: {
           gte: new Date(startDate),
           lte: new Date(endDate)
@@ -185,6 +256,7 @@ export const getAllTransactionsByUser = async ({ userId, transactionId, startDat
       }),
     };
 
+    // Query the database for transactions based on where conditions
     const transactions = await context.entities.Transaction.findMany({
       where: whereConditions,
       orderBy: {
@@ -192,10 +264,12 @@ export const getAllTransactionsByUser = async ({ userId, transactionId, startDat
       }
     });
 
+    // Count the total number of transactions that match the where conditions
     const count = await context.entities.Transaction.count({
       where: whereConditions,
     });
 
+    // Return the found transactions and the count
     return {
       transactions: transactions,
       count: count
@@ -205,4 +279,7 @@ export const getAllTransactionsByUser = async ({ userId, transactionId, startDat
     throw new HttpError(500, 'Internal Server Error');
   }
 };
+
+*/
+
 

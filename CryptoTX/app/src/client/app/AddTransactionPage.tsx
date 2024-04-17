@@ -30,7 +30,7 @@ export default function AddTransactionPage() {
     }
 
     try {
-      const response = await createTransaction({ data: { ...transaction, status: 'Pending' } });
+      const response = await createTransaction({ data: { ...transaction, status: 'New' } });
       console.log(response);
       navigate.push('/transactions');
     } catch (error) {

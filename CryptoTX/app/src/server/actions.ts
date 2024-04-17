@@ -31,7 +31,7 @@ export const createTransaction = async ({ data }, context) => {
   const validTypes = ['SELL', 'BUY'];
   const validFiatCurrencies = ['EUR', 'USD', 'PLN', 'CHF'];
   const validCryptoCurrencies = ['USDT', 'BTC'];
-  const validStatuses = ['NEW', 'In Progress', 'Done', 'Cancelled', 'Deleted'];
+  const validStatuses = ['New', 'In Progress', 'Done', 'Cancelled', 'Deleted'];
 
   if (!validTypes.includes(data.type)) {
     throw new Error('Invalid transaction type');

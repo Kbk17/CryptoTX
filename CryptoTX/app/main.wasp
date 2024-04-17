@@ -173,18 +173,18 @@ entity Logs {=psl
 psl=}
 
 entity Transaction {=psl
-  id            Int      @id @default(autoincrement())
-  type          String
-  fiatCurrency  String
-  cryptoCurrency String
-  amountFiat    Decimal
-  exchangeRate  Decimal
-  commission    Decimal
-  amountCrypto  Decimal
-  createdAt     DateTime        @default(now())
-  status        String
-  user                      User            @relation(fields: [userId], references: [id])
-  userId                    Int
+  id                       Int             @id @default(autoincrement())
+  type                     String
+  fiatCurrency             String
+  cryptoCurrency           String
+  amountFiat               Decimal
+  exchangeRate             Decimal
+  commission               Decimal
+  amountCrypto             Decimal
+  createdAt                DateTime        @default(now())
+  status                   String
+  user                     User            @relation(fields: [userId], references: [id])
+  userId                   Int
 psl=}
 
 
@@ -407,11 +407,18 @@ query getPaginatedUsers {
   entities: [User]
 }
 
-query getTransactionsByUser {
-  fn: import { getAllTransactionsByUser } from "@src/server/queries.js"
+query getPaginatedTransactions {
+  fn: import { getPaginatedTransactions } from "@src/server/queries.js",
+  entities: [Transaction]
 }
 
 /*
+query getTransactionsByUser {
+  fn: import { getAllTransactionsByUser } from "@src/server/queries.js",
+  entities: [User, Transaction]
+}
+
+
  * 📡 These are custom Wasp API Endpoints. Use them for callbacks, webhooks, etc.
  * https://wasp-lang.dev/docs/advanced/apis
  */ 
