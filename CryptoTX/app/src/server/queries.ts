@@ -1,4 +1,4 @@
-import { type DailyStats, type GptResponse, type User, type PageViewSource, type Task, type File, type Transaction } from 'wasp/entities';
+import { type DailyStats, type GptResponse, type User, type PageViewSource, type Task, type File, type Transaction, type BankDetails} from 'wasp/entities';
 import { HttpError } from 'wasp/server';
 import {
   type GetGptResponses,
@@ -8,9 +8,9 @@ import {
   type GetAllFilesByUser,
   type GetPaginatedTransactions,
   type GetDownloadFileSignedURL,
+  type GetBankDetailsByCurrency,
 } from 'wasp/server/operations';
 import { getDownloadFileSignedURLFromS3 } from './file-upload/s3Utils.js';
-
 type DailyStatsWithSources = DailyStats & {
   sources: PageViewSource[];
 };
@@ -19,6 +19,61 @@ type DailyStatsValues = {
   dailyStats: DailyStatsWithSources;
   weeklyStats: DailyStatsWithSources[];
 };
+
+export const getFiatCurrencyIdByCode = async (currencyCode, context) => {
+  if (!context.user) throw new HttpError(401, 'Unauthorized');
+
+  const fiatCurrency = await context.entities.FiatCurrency.findUnique({
+    where: { currencyCode }
+  });
+
+  if (!fiatCurrency) {
+    throw new HttpError(404, `No fiat currency found for code: ${currencyCode}`);
+  }
+
+  return fiatCurrency.id;
+};
+
+export const getBankDetailsByCurrency = async (currencyCode, context) => {
+  if (!context.user) throw new HttpError(401, 'Unauthorized');
+
+  const bankDetails = await context.entities.BankDetails.findMany({
+    where: {
+      fiatCurrencies: {
+        some: {
+          currencyCode: currencyCode
+        }
+      }
+    }
+  });
+
+  if (bankDetails.length === 0) {
+    throw new HttpError(404, `No bank details found for the currency code: ${currencyCode}`);
+  }
+
+  return bankDetails;
+};
+
+
+/* dziłajaca funkcja
+export const getBankDetailsByCurrency = async (currencyCode, context) => {
+  if (!context.user) throw new HttpError(401, 'Unauthorized');
+
+  // Pobranie wszystkich BankDetails na podstawie kodu waluty
+  const bankDetails = await context.entities.BankDetails.findMany({
+    where: {
+      fiatCurrencies: {
+        some: {
+          currencyCode: currencyCode
+        }
+      }
+    }
+  });
+
+  // Zwróć całą listę pasujących BankDetails
+  return bankDetails;
+};
+*/
 
 export const getGptResponses: GetGptResponses<void, GptResponse[]> = async (args, context) => {
   if (!context.user) {
@@ -32,6 +87,7 @@ export const getGptResponses: GetGptResponses<void, GptResponse[]> = async (args
     },
   });
 };
+
 
 export const getAllTasksByUser: GetAllTasksByUser<void, Task[]> = async (_args, context) => {
   if (!context.user) {
@@ -165,6 +221,7 @@ export const getPaginatedUsers: GetPaginatedUsers<GetPaginatedUsersInput, GetPag
     totalPages,
   };
 };
+/*
 
 export type GetPaginatedTransactionsInput = {
   skip: number;
@@ -189,6 +246,8 @@ export type GetPaginatedTransactionsOutput = {
   }[];
   totalPages: number;
 };
+
+
 
 export const getPaginatedTransactions: GetPaginatedTransactions<GetPaginatedTransactionsInput, GetPaginatedTransactionsOutput> = async (
   args,
@@ -228,7 +287,7 @@ export const getPaginatedTransactions: GetPaginatedTransactions<GetPaginatedTran
 };
 
 
-
+*/
 
 /* queries.js
 export const getAllTransactionsByUser = async ({ transactionId, startDate, endDate, orderBy = 'createdAt', orderDirection = 'desc' }, context) => {
@@ -282,4 +341,74 @@ export const getAllTransactionsByUser = async ({ transactionId, startDate, endDa
 
 */
 
+export type GetPaginatedTransactionsInput = {
+  skip: number;
+  limit: number;
+  typeFilter?: string;
+  statusFilter?: string[];
+  //isAdmin: boolean;  // Nowe pole do określenia, czy zapytanie pochodzi od administratora
+};
+
+export type GetPaginatedTransactionsOutput = {
+  transactions: {
+    id: number;
+    type: string;
+    fiatCurrency: string;
+    cryptoCurrency: string;
+    amountFiat: string; // Formatted string with fixed decimal places
+    exchangeRate: string; // Formatted string with fixed decimal places
+    commission: string; // Formatted string with fixed decimal places
+    amountCrypto: string; // Formatted string with fixed decimal places
+    createdAt: Date;
+    status: string;
+    userId: number;
+  }[];
+  totalPages: number;
+};
+
+export const getPaginatedTransactions = async (
+  args: GetPaginatedTransactionsInput,
+  context: any
+): Promise<GetPaginatedTransactionsOutput> => {
+  if (!context.user) {
+    throw new HttpError(401, "User must be logged in to access their transactions.");
+  }
+
+  let whereClause: any = {};
+ // if (!args.isAdmin) {
+   // whereClause.userId = context.user.id; // Filtruje transakcje dla zalogowanego użytkownika, jeśli nie jest adminem
+  //}
+  if (args.typeFilter) {
+    whereClause.type = args.typeFilter;
+  }
+  if (args.statusFilter) {
+    whereClause.status = { in: args.statusFilter };
+  }
+
+  const transactions = await context.entities.Transaction.findMany({
+    skip: args.skip,
+    take: args.limit,
+    where: whereClause,
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const totalTransactionsCount = await context.entities.Transaction.count({
+    where: whereClause
+  });
+  const totalPages = Math.ceil(totalTransactionsCount / args.limit);
+
+  return {
+    transactions: transactions.map(tran => ({
+      ...tran,
+      amountFiat: tran.amountFiat.toFixed(2), // Assuming amountFiat is still a Decimal type in the ORM
+      exchangeRate: tran.exchangeRate.toFixed(4),
+      commission: tran.commission.toFixed(2),
+      amountCrypto: tran.amountCrypto.toFixed(4),
+      createdAt: tran.createdAt,
+      status: tran.status,
+      userId: tran.userId
+    })),
+    totalPages
+  };
+};
 

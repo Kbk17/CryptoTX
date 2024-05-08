@@ -1,104 +1,118 @@
-import React, { useState } from 'react';
-import { createTransaction } from 'wasp/client/operations';
+import React, { useState, useEffect } from 'react';
+import { createTransaction, useQuery, getFiatCurrencyIdByCode, getBankDetailsByCurrency } from 'wasp/client/operations';
 import { useHistory } from 'react-router-dom';
 
 export default function AddTransactionPage() {
   const navigate = useHistory();
-
   const [transaction, setTransaction] = useState({
-    type: '',
     fiatCurrency: '',
     cryptoCurrency: '',
     amountFiat: '',
-    exchangeRate: '',
-    commission: '',
-    amountCrypto: '',
+    bankDetailsId: '',
+    fiatCurrencyId: ''
   });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setTransaction(prevState => ({ ...prevState, [name]: value }));
+  const { data: bankDetails } = useQuery(getBankDetailsByCurrency, transaction.fiatCurrency);
+  const { data: fiatCurrencyId } = useQuery(getFiatCurrencyIdByCode, transaction.fiatCurrency);
+
+ useEffect(() => {
+  // Założenie, że fiatCurrencyId już zawiera tylko ID jako wartość, nie obiekt.
+  if (fiatCurrencyId) {
+    setTransaction(prev => ({ ...prev, fiatCurrencyId: fiatCurrencyId }));
+  }
+  if (bankDetails && bankDetails.length > 0) {
+    setTransaction(prev => ({ ...prev, bankDetailsId: bankDetails[0].id }));
+  }
+}, [fiatCurrencyId, bankDetails]);
+
+
+const handleInputChange = (e) => {
+  const { name, value } = e.target;
+  if (name === "amountFiat") {
+    const parsedValue = parseFloat(value);
+    if (!isNaN(parsedValue)) {
+      setTransaction(prev => ({ ...prev, [name]: parsedValue }));
+    } else {
+      console.log("Invalid input for fiat amount"); // Możesz również ustawić jakiś błąd w stanie
+    }
+  } else {
+    setTransaction(prev => ({ ...prev, [name]: value }));
+  }
+};
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  // Parsowanie wartości Fiat Amount do liczby
+  const fiatAmount = parseFloat(transaction.amountFiat);
+
+  // Walidacja wartości przed próbą stworzenia transakcji
+  if (!transaction.fiatCurrencyId) {
+    console.error('Validation failed: Fiat currency ID is missing.');
+    return;
+  }
+
+  if (!transaction.cryptoCurrency) {
+    console.error('Validation failed: Crypto currency is missing.');
+    return;
+  }
+
+  if (isNaN(fiatAmount) || fiatAmount <= 0) {
+    console.error('Validation failed: Fiat amount is invalid or not positive.');
+    return;
+  }
+
+  if (!transaction.bankDetailsId) {
+    console.error('Validation failed: Bank details ID is missing.');
+    return;
+  }
+
+  // Przygotowanie danych do wysłania
+  const transactionData = {
+    ...transaction,
+    fiatAmount, // Używanie sparsowanej wartości
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!transaction.type || !transaction.fiatCurrency || !transaction.cryptoCurrency ||
-        parseFloat(transaction.amountFiat) <= 0 || parseFloat(transaction.exchangeRate) <= 0 || parseFloat(transaction.commission) <= 0 ||
-        parseFloat(transaction.amountCrypto) <= 0) {
-      console.error('Validation failed: fields are missing or values are incorrect.');
-      return;
-    }
-
-    try {
-      const response = await createTransaction({ data: { ...transaction, status: 'New' } });
-      console.log(response);
-      navigate.push('/transactions');
-    } catch (error) {
-      console.error('Failed to add transaction:', error);
-    }
-  };
+  try {
+    const response = await createTransaction({ data: transactionData });
+    console.log('Transaction successful:', response);
+    navigate.push('/transactions');
+  } catch (error) {
+    console.error('Failed to add transaction:', error);
+  }
+};
 
   return (
-    <div className='mt-10 px-6'>
-      <div className='overflow-hidden border border-gray-900/10 shadow-lg sm:rounded-lg lg:m-8 dark:border-gray-100/10'>
-        <div className='px-4 py-5 sm:px-6 lg:px-8'>
-          <h1 className='text-3xl font-semibold text-center mb-6'>Add Transaction</h1>
-          <form onSubmit={handleSubmit} className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="type">Type</label>
-                <select className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="type" name="type" value={transaction.type} onChange={handleInputChange}>
-                  <option value="">Select Type</option>
-                  <option value="BUY">BUY</option>
-                  <option value="SELL">SELL</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="fiatCurrency">Fiat Currency</label>
-                <select className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="fiatCurrency" name="fiatCurrency" value={transaction.fiatCurrency} onChange={handleInputChange}>
-                  <option value="">Select Currency</option>
-                  <option value="USD">USD</option>
-                  <option value="PLN">PLN</option>
-                  <option value="EUR">EUR</option>
-                  <option value="CHF">CHF</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="cryptoCurrency">Crypto Currency</label>
-                <select className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="cryptoCurrency" name="cryptoCurrency" value={transaction.cryptoCurrency} onChange={handleInputChange}>
-                  <option value="">Select Crypto</option>
-                  <option value="USDT">USDT</option>
-                  <option value="BTC">BTC</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="amountFiat">Fiat Amount</label>
-                <input type="number" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="amountFiat" name="amountFiat" value={transaction.amountFiat} onChange={handleInputChange}/>
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="exchangeRate">Exchange Rate</label>
-                <input type="number" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="exchangeRate" name="exchangeRate" value={transaction.exchangeRate} onChange={handleInputChange}/>
-              </div>
-              <div>
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="amountCrypto">Crypto Amount</label>
-                <input type="number" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="amountCrypto" name="amountCrypto" value={transaction.amountCrypto} onChange={handleInputChange}/>
-              </div>
-              <div className="col-span-2">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="commission">Commission</label>
-                <input type="number" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="commission" name="commission" value={transaction.commission} onChange={handleInputChange}/>
-              </div>
-              <div className='inline-flex w-full justify-end mt-6'>
-                <button
-                  type="submit"
-                  className='inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
-                >
-                  Add Transaction
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
+    <div>
+      <h1>Add Transaction</h1>
+      <form onSubmit={handleSubmit}>
+        <label>
+          Fiat Currency:
+          <select name="fiatCurrency" value={transaction.fiatCurrency} onChange={handleInputChange}>
+            <option value="">Select Currency</option>
+            <option value="EUR">EUR</option>
+            <option value="USD">USD</option>
+            <option value="PLN">PLN</option>
+          </select>
+        </label>
+        <label>
+          Bank Details:
+          <select name="bankDetailsId" value={transaction.bankDetailsId} onChange={handleInputChange}>
+            {bankDetails?.map(detail => (
+              <option key={detail.id} value={detail.id}>{detail.bankName} - {detail.accountNumber}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Crypto Currency:
+          <input type="text" name="cryptoCurrency" value={transaction.cryptoCurrency} onChange={handleInputChange} />
+        </label>
+        <label>
+          Fiat Amount:
+          <input type="number" name="amountFiat" value={transaction.amountFiat} onChange={handleInputChange} />
+        </label>
+        <button type="submit">Submit</button>
+      </form>
     </div>
   );
 }

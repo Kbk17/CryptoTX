@@ -1,4 +1,4 @@
-import { type User, type Task, type File, type Transaction } from 'wasp/entities';
+import { type User, type Task, type File, type Transaction, type BankDetails, type FiatCurrency } from 'wasp/entities';
 import { HttpError } from 'wasp/server';
 
 import {
@@ -17,6 +17,7 @@ import { fetchStripeCustomer, createStripeCheckoutSession } from './payments/str
 import { TierIds } from '../shared/constants.js';
 import { getUploadFileSignedURLFromS3 } from './file-upload/s3Utils.js';
 import OpenAI from 'openai';
+import { getBankDetailsByCurrency, getFiatCurrencyIdByCode } from './queries';
 
 const openai = setupOpenAI();
 function setupOpenAI() {
@@ -26,6 +27,7 @@ function setupOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 
+/*
 export const createTransaction = async ({ data }, context) => {
   // Validate input
   const validTypes = ['SELL', 'BUY'];
@@ -59,19 +61,33 @@ export const createTransaction = async ({ data }, context) => {
   return createdTransaction;
 };
 
-export const getTransactions = async (context: {
-  entities: any; user: User 
-}) => {
+*/
+
+
+export const createTransaction = async ({ data }, context) => {
   if (!context.user) throw new HttpError(401, 'Unauthorized');
 
-  const userTransactions = await context.entities.Transaction.findMany({
-    where: {
-      user: { id: context.user.id }
+  const createdTransaction = await context.entities.Transaction.create({
+    data: {
+      userId: context.user.id,
+      fiatCurrencyId: data.fiatCurrencyId, 
+      fiatCurrency: data.fiatCurrency,
+      fiatAmount: parseFloat(data.fiatAmount),
+      cryptoCurrency: data.cryptoCurrency,
+      walletAddress: data.walletAddress || '0x54548454564',
+      cryptoCurrencyAmount: parseFloat(data.cryptoCurrencyAmount) || null,
+      commission: parseFloat(data.commission) || null,
+      rate: parseFloat(data.rate) || null,
+      lastChangeDate: new Date(),
+      bankDetailsId: data.bankDetailsId,
+      status: 'new'
     }
   });
-
-  return userTransactions;
+  
+  return createdTransaction;
 };
+
+
 
 export const stripePayment: StripePayment<string, StripePaymentResult> = async (tier, context) => {
   if (!context.user) {
@@ -387,3 +403,5 @@ export const updateCurrentUser: UpdateCurrentUser<Partial<User>, User> = async (
     data: user,
   });
 };
+
+

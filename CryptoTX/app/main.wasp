@@ -173,19 +173,53 @@ entity Logs {=psl
 psl=}
 
 entity Transaction {=psl
-  id                       Int             @id @default(autoincrement())
-  type                     String
-  fiatCurrency             String
-  cryptoCurrency           String
-  amountFiat               Decimal
-  exchangeRate             Decimal
-  commission               Decimal
-  amountCrypto             Decimal
-  createdAt                DateTime        @default(now())
-  status                   String
-  user                     User            @relation(fields: [userId], references: [id])
-  userId                   Int
+  transactionId           String      @id @default(uuid())
+  userId                  Int         // Reference to the User model
+  fiatCurrencyId          Int         // ID of the fiat currency used in the transaction
+  fiatCurrency            FiatCurrency @relation("FiatCurrencyToTransaction", fields: [fiatCurrencyId], references: [id]) // Ustalona relacja do FiatCurrency
+  fiatAmount              Decimal     // Amount in fiat currency
+  cryptoCurrency          String      // Type of cryptocurrency involved in the transaction
+  cryptoCurrencyAmount    Decimal     // Amount of cryptocurrency
+  walletAddress           String      @default("0x54548454564") // Default wallet address
+  status                  String      @default("new") // Transaction status
+  commission              Decimal     // Transaction commission
+  rate                    Decimal     // Exchange rate at the time of the transaction
+  //createdAt               DateTime    @default(now())
+  lastChangeDate          DateTime    @updatedAt // Last time the transaction was updated
+  user                    User        @relation(fields: [userId], references: [id]) // Relation to the User
+  bankDetailsId           Int
+  bankDetails             BankDetails @relation(name: "BankDetailsToTransaction", fields: [bankDetailsId], references: [id])
 psl=}
+
+
+
+entity BankDetails {=psl
+  id                      Int             @id @default(autoincrement())
+  accountName             String
+  accountNumber           String
+  bankName                String
+  bankAddress             String
+  iban                    String
+  swift                   String
+
+  // Relacja do wielu transakcji
+  transactions            Transaction[] @relation(name: "BankDetailsToTransaction")
+
+  // Można mieć wiele walut powiązanych z danymi bankowymi
+  fiatCurrencies          FiatCurrency[] @relation(name: "BankToFiat")
+psl=}
+
+entity FiatCurrency {=psl
+  id              Int                @id @default(autoincrement())
+  currencyCode    String             @unique
+  currencyName    String
+  transactions    Transaction[] @relation("FiatCurrencyToTransaction")  // Dodana relacja odwrotna
+  bankDetailsId   Int?               // Opcjonalne, jeśli nie każda waluta musi mieć bank
+  bankDetails     BankDetails? @relation(name: "BankToFiat", fields: [bankDetailsId], references: [id])
+psl=}
+
+
+
 
 
 /* 📡 These are the Wasp Routes (You can protect them easily w/ 'authRequired: true');
@@ -372,10 +406,21 @@ action createFile {
 
 action createTransaction {
   fn: import { createTransaction } from "@src/server/actions.js",
-  entities: [Transaction, User]
+  entities: [Transaction, BankDetails, FiatCurrency, User]
 }
 
 // 📚 Queries
+
+
+query getBankDetailsByCurrency {
+  fn: import { getBankDetailsByCurrency } from "@src/server/queries.js",
+  entities: [BankDetails, FiatCurrency, User]
+}
+
+query getFiatCurrencyIdByCode {
+  fn: import { getFiatCurrencyIdByCode } from "@src/server/queries.js",
+  entities: [BankDetails, FiatCurrency, User]
+}
 
 query getGptResponses {
   fn: import { getGptResponses } from "@src/server/queries.js",
