@@ -19,6 +19,34 @@ import { getUploadFileSignedURLFromS3 } from './file-upload/s3Utils.js';
 import OpenAI from 'openai';
 import { GetBankDetailsByCurrency, GetFiatCurrencyIdByCode } from 'wasp/server/operations';
 
+export type EditTransactionInput = {
+  transactionId: string;
+  updates: {
+    fiatAmount?: number;
+    cryptoCurrency?: string;
+    cryptoCurrencyAmount?: number;
+    walletAddress?: string;
+    status?: string;
+    commission?: number;
+    rate?: number;
+  };
+};
+
+export const editTransaction = async (
+  { transactionId, updates }: EditTransactionInput,
+  context
+) => {
+  if (!context.user || !context.user.isAdmin) {
+    throw new HttpError(401, 'Unauthorized');
+  }
+
+  const transaction = await context.entities.Transaction.update({
+    where: { transactionId },
+    data: updates,
+  });
+
+  return transaction;
+};
 
 export const createTransaction = async ({ data }, context) => {
   if (!context.user) throw new HttpError(401, 'Unauthorized');

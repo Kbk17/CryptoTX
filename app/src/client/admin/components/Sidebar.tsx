@@ -184,7 +184,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               {/* <!-- Menu Item Settings --> */}
               <li>
                 <NavLink
-                  to='/admin/settings'
+                  to='/admin/transactions'
                   className={(isActive) =>
                     cn(
                       'group relative flex items-center gap-2.5 rounded-sm py-2 px-4 font-medium text-bodydark1 duration-300 ease-in-out hover:bg-gray-700 dark:hover:bg-meta-4',
@@ -218,7 +218,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                       </clipPath>
                     </defs>
                   </svg>
-                  Settings
+                  Transactions
                 </NavLink>
               </li>
               {/* <!-- Menu Item Settings --> */}

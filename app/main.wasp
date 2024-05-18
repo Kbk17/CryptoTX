@@ -230,11 +230,20 @@ query getPaginatedTransactions {
   entities: [Transaction, User]  // Assuming it involves these entities
 }
 
-
+query getPaginatedAdminTransactions {
+  fn: import { getPaginatedAdminTransactions } from "@src/server/queries.js",
+  entities: [Transaction, User]  // Assuming it involves these entities
+}
 
 /* 📡 These are the Wasp Routes (You can protect them easily w/ 'authRequired: true');
  * https://wasp-lang.dev/docs/tutorial/pages
  */
+
+route AdminTransactionsRoute { path: "/admin/transactions", to: AdminTransactionsPage }
+page AdminTransactionsPage {
+  authRequired: true,
+  component: import AdminTransactionsPage from "@src/client/admin/pages/AdminTransactionsPage"
+}
 
 route LandingPageRoute { path: "/", to: LandingPage }
 page LandingPage {
@@ -415,6 +424,11 @@ action createFile {
 
 action createTransaction {
   fn: import { createTransaction } from "@src/server/actions.js",
+  entities: [Transaction, BankDetails, FiatCurrency, User]
+}
+
+action editTransaction {
+  fn: import { editTransaction } from "@src/server/actions.js",
   entities: [Transaction, BankDetails, FiatCurrency, User]
 }
 

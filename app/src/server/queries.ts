@@ -10,9 +10,98 @@ import {
   type GetFiatCurrencyIdByCode,
   type GetBankDetailsByCurrency,
   type GetPaginatedTransactions,
+  type GetPaginatedAdminTransactions,
 } from 'wasp/server/operations';
 import { getDownloadFileSignedURLFromS3 } from './file-upload/s3Utils.js';
 import { type SubscriptionStatusOptions } from '../shared/types.js';
+
+
+
+export type GetPaginatedAdminTransactionsInput = {
+  skip: number;
+  transactionIdContains?: string;
+  userId?: number;
+  status?: string;
+};
+
+export type GetPaginatedAdminTransactionsOutput = {
+  transactions: {
+    transactionId: string;
+    userId: number;
+    fiatAmount: number;
+    cryptoCurrency: string;
+    cryptoCurrencyAmount: number;
+    walletAddress: string;
+    status: string;
+    commission: number;
+    rate: number;
+    createdAt: Date;
+    lastChangeDate: Date;
+    lastModifiedByUserId: number;
+    lastModifiedByEmail: string;
+  }[];
+  totalPages: number;
+};
+
+
+export const getPaginatedAdminTransactions = async (
+  { skip, transactionIdContains, userId, status }: GetPaginatedAdminTransactionsInput,
+  context
+): Promise<GetPaginatedAdminTransactionsOutput> => {
+  if (!context.user || !context.user.isAdmin) {
+    throw new HttpError(401, 'Unauthorized');
+  }
+
+  const whereConditions = {
+    AND: [
+      {
+        transactionId: {
+          contains: transactionIdContains || undefined,
+          mode: 'insensitive',
+        },
+        userId: userId || undefined,
+        status: status || undefined,
+      },
+    ],
+  };
+
+  const totalCount = await context.entities.Transaction.count({
+    where: whereConditions,
+  });
+
+  const transactions = await context.entities.Transaction.findMany({
+    skip: skip,
+    take: 10,
+    where: whereConditions,
+    include: {
+      lastModifiedBy: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  const transactionsWithEmail = transactions.map(transaction => ({
+    transactionId: transaction.transactionId,
+    userId: transaction.userId,
+    fiatAmount: transaction.fiatAmount,
+    cryptoCurrency: transaction.cryptoCurrency,
+    cryptoCurrencyAmount: transaction.cryptoCurrencyAmount,
+    walletAddress: transaction.walletAddress,
+    status: transaction.status,
+    commission: transaction.commission,
+    rate: transaction.rate,
+    createdAt: transaction.createdAt,
+    lastChangeDate: transaction.lastChangeDate,
+    lastModifiedByUserId: transaction.lastModifiedByUserId,
+    lastModifiedByEmail: transaction.lastModifiedBy ? transaction.lastModifiedBy.email : 'N/A',
+  }));
+
+  return {
+    transactions: transactionsWithEmail,
+    totalPages: Math.ceil(totalCount / 10),
+  };
+};
 
 
 export type GetPaginatedTransactionsInput = {
