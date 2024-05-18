@@ -7,19 +7,15 @@ import { AiFillCloseCircle } from 'react-icons/ai';
 import { HiBars3 } from 'react-icons/hi2';
 import logo from '../static/logo.png';
 import DropdownUser from './DropdownUser';
-import { DOCS_URL, BLOG_URL } from '../../shared/constants';
 import DarkModeSwitcher from '../admin/components/DarkModeSwitcher';
 import { UserMenuItems } from '../components/UserMenuItems';
 
 const navigation = [
-  { name: 'AI Scheduler (Demo App)', href: '/demo-app' },
-  { name: 'File Upload (AWS S3)', href: '/file-upload' },
-  { name: 'Pricing', href: '/pricing' },
-  { name: 'Documentation', href: DOCS_URL },
-  { name: 'Blog', href: BLOG_URL },
+  { name: 'Add new transaction', href: '/add-transaction' },
+  { name: 'My Transactions', href: '/transactions' },
 ];
 
-const NavLogo = () => <img className='h-12 w-42' src={logo} alt='BorCash Logo' />;
+const NavLogo = () => <img className='h-12 w-44' src={logo} alt='BorCash Logo' />;
 
 export default function AppNavBar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -30,7 +26,7 @@ export default function AppNavBar() {
       <nav className='flex items-center justify-between p-6 lg:px-8' aria-label='Global'>
         <div className='flex lg:flex-1'>
           <a href='/' className='-m-1.5 p-1.5'>
-            <img className='h-8 w-8' src={logo} alt='My SaaS App' />
+            <img className='h-12 w-38' src={logo} alt='BorCash Logo' />
           </a>
         </div>
         <div className='flex lg:hidden'>

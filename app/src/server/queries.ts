@@ -21,7 +21,7 @@ export type GetPaginatedTransactionsInput = {
 };
 
 export type GetPaginatedTransactionsOutput = {
-  transactions: Pick<Transaction, 'transactionId' | 'fiatAmount' | 'cryptoCurrency' | 'cryptoCurrencyAmount' | 'status' | 'createdAt'>[];
+  transactions: Pick<Transaction, 'transactionId' | 'fiatAmount' | 'cryptoCurrency' | 'cryptoCurrencyAmount' | 'walletAddress' | 'status' | 'createdAt'>[];
   totalPages: number;
 };
 
@@ -46,6 +46,7 @@ export const getPaginatedTransactions = async (
       fiatAmount: true,
       cryptoCurrency: true,
       cryptoCurrencyAmount: true,
+      walletAddress: true,
       status: true,
       createdAt: true
     },

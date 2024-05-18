@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createTransaction, useQuery, getFiatCurrencyIdByCode, getBankDetailsByCurrency } from 'wasp/client/operations';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faClipboard } from '@fortawesome/free-solid-svg-icons';
 
 interface IBankDetail {
   id: number;
@@ -17,11 +19,12 @@ export default function AddTransactionPage() {
     cryptoCurrency: 'USDT', // Default and locked to USDT
     amountFiat: '',
     bankDetailsId: '',
-    fiatCurrencyId: ''
+    fiatCurrencyId: '',
   });
 
   const [submitted, setSubmitted] = useState(false);
   const [displayBankDetails, setDisplayBankDetails] = useState<IBankDetail | null>(null);
+  const bankDetailsRef = useRef<HTMLDivElement>(null);
 
   const { data: bankDetails } = useQuery(getBankDetailsByCurrency, transaction.fiatCurrency);
   const { data: fiatCurrencyId } = useQuery(getFiatCurrencyIdByCode, transaction.fiatCurrency);
@@ -38,6 +41,12 @@ export default function AddTransactionPage() {
       setDisplayBankDetails(bankDetails[0]);
     }
   }, [bankDetails]);
+
+  useEffect(() => {
+    if (submitted && displayBankDetails && bankDetailsRef.current) {
+      bankDetailsRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [submitted, displayBankDetails]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -58,7 +67,8 @@ export default function AddTransactionPage() {
 
     const transactionData = {
       ...transaction,
-      fiatAmount
+      fiatAmount,
+      walletAddress: '0x54548454564', // Fixed wallet address
     };
 
     try {
@@ -69,61 +79,82 @@ export default function AddTransactionPage() {
     }
   };
 
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Copied to clipboard');
+    }, (err) => {
+      console.error('Failed to copy:', err);
+    });
+  };
+
   return (
-    <div className="flex justify-center mx-auto px-4 py-5">
-      <div className="w-1/2">
-        <h1 className="text-2xl font-bold mb-5">Add Transaction</h1>
-        <form onSubmit={handleSubmit} className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+    <div className="flex flex-col lg:flex-row justify-center items-start mx-auto px-4 py-5 space-y-10 lg:space-y-0 lg:space-x-10">
+      <div className="w-full lg:w-1/2 bg-white rounded-lg shadow-card p-8 flex flex-col">
+        <h1 className="text-title-lg font-satoshi text-primary mb-6">Add Transaction</h1>
+        <form onSubmit={handleSubmit} className="space-y-4 flex-grow">
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="fiatCurrency">
+            <label className="block text-bodydark font-bold mb-2" htmlFor="fiatCurrency">
               Fiat Currency:
             </label>
-            <select id="fiatCurrency" name="fiatCurrency" value={transaction.fiatCurrency} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            <select id="fiatCurrency" name="fiatCurrency" value={transaction.fiatCurrency} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-body leading-tight focus:outline-none focus:shadow-outline bg-meta-2">
               <option value="EUR">EUR</option>
               <option value="USD">USD</option>
               <option value="PLN">PLN</option>
             </select>
           </div>
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="cryptoCurrency">
-              Crypto Currency:
+            <label className="block text-bodydark font-bold mb-2" htmlFor="amountFiat">
+              Fiat Amount:
             </label>
-            <input id="cryptoCurrency" type="text" name="cryptoCurrency" value={transaction.cryptoCurrency} readOnly className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-100" />
+            <input id="amountFiat" type="number" name="amountFiat" value={transaction.amountFiat} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-body leading-tight focus:outline-none focus:shadow-outline bg-meta-2" />
           </div>
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="bankDetailsId">
+            <label className="block text-bodydark font-bold mb-2" htmlFor="bankDetailsId">
               Bank Details:
             </label>
-            <select name="bankDetailsId" value={transaction.bankDetailsId} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            <select name="bankDetailsId" value={transaction.bankDetailsId} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-body leading-tight focus:outline-none focus:shadow-outline bg-meta-2">
               {bankDetails?.map(detail => (
                 <option key={detail.id} value={detail.id}>{detail.bankName} - {detail.accountNumber}</option>
               ))}
             </select>
           </div>
-          <div className="mb-6">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="amountFiat">
-              Fiat Amount:
+          <div className="mb-4">
+            <label className="block text-bodydark font-bold mb-2" htmlFor="cryptoCurrency">
+              Crypto Currency:
             </label>
-            <input id="amountFiat" type="number" name="amountFiat" value={transaction.amountFiat} onChange={handleInputChange} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" />
+            <input id="cryptoCurrency" type="text" name="cryptoCurrency" value={transaction.cryptoCurrency} readOnly className="shadow appearance-none border rounded w-full py-2 px-3 text-body leading-tight focus:outline-none focus:shadow-outline bg-meta-2" />
+          </div>
+          <div className="mb-6">
+            <label className="block text-bodydark font-bold mb-2" htmlFor="walletAddress">
+              Wallet Address:
+            </label>
+            <input id="walletAddress" type="text" name="walletAddress" value="0x54548454564" readOnly className="shadow appearance-none border rounded w-full py-2 px-3 text-body leading-tight focus:outline-none focus:shadow-outline bg-meta-2 text-xs" />
           </div>
           <div className="flex items-center justify-between">
-            <button type="submit" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            <button type="submit" disabled={submitted} className={`bg-primary hover:bg-primary-darker text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline ${submitted ? 'opacity-50 cursor-not-allowed' : ''}`}>
               Submit
             </button>
+            {submitted && (
+              <p className="text-success ml-4">Transaction Created, please make payment to finalize transaction.</p>
+            )}
           </div>
         </form>
       </div>
       {submitted && displayBankDetails && (
-        <div className="w-1/2 ml-10">
-          <h2 className="text-xl font-bold mb-4">Bank Details</h2>
-          <ul className="bg-white shadow-md rounded px-8 pt-6 pb-8">
-            <li><strong>Bank Name:</strong> {displayBankDetails.bankName}</li>
-            <li><strong>Account Name:</strong> {displayBankDetails.accountName}</li>
-            <li><strong>Account Number:</strong> {displayBankDetails.accountNumber}</li>
-            <li><strong>Bank Address:</strong> {displayBankDetails.bankAddress}</li>
-            <li><strong>IBAN:</strong> {displayBankDetails.iban}</li>
-            <li><strong>SWIFT:</strong> {displayBankDetails.swift}</li>
+        <div ref={bankDetailsRef} className="w-full lg:w-1/2 bg-white rounded-lg shadow-card p-8 flex flex-col">
+          <h2 className="text-title-md font-satoshi text-primary mb-4">Bank Details</h2>
+          <ul className="space-y-2 flex-grow">
+            {Object.entries(displayBankDetails).map(([key, value]) => (
+              <li key={key} className="flex justify-between items-center py-2">
+                <span className="font-bold capitalize text-bodydark">{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                <span className="flex items-center text-body">
+                  {value}
+                  <FontAwesomeIcon icon={faClipboard} className="w-5 h-5 ml-2 cursor-pointer text-primary" onClick={() => copyToClipboard(value)} />
+                </span>
+              </li>
+            ))}
           </ul>
+          <p className="text-danger mt-4">Transactions not settled within 14 business days will be cancelled. Please transfer only from your own account. Ensure all details match your bank account information to avoid delays.</p>
         </div>
       )}
     </div>

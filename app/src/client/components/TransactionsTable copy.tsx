@@ -13,7 +13,6 @@ interface Transaction {
   fiatAmount: number;
   cryptoCurrency: string;
   cryptoCurrencyAmount: number;
-  walletAddress: string;
   status: string;
   createdAt: Date;
   fiatCurrency: FiatCurrency;
@@ -69,7 +68,6 @@ const TransactionsTable = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fiat Amount</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Crypto Currency</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Crypto Amount</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallet Address</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
             </tr>
@@ -81,7 +79,6 @@ const TransactionsTable = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{transaction.fiatAmount.toString()}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{transaction.cryptoCurrency}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{transaction.cryptoCurrencyAmount.toString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{transaction.walletAddress}</td>
                 <td className={`px-6 py-4 whitespace-nowrap text-sm ${transaction.status === 'completed' ? 'text-green-500' : 'text-red-500'} dark:text-gray-300`}>{transaction.status}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <button onClick={() => openModal()} className="text-blue-500 dark:text-blue-400">

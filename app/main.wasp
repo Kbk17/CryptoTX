@@ -27,7 +27,9 @@ app OpenSaaS {
       email: {
         fromField: {
           name: "Open SaaS App",
-          email: "me@example.com" 
+          email: "me@example.com", 
+          //firstName: "asd",
+          //lastName: "asd",
         },
         emailVerification: {
           clientRoute: EmailVerificationRoute,
@@ -65,11 +67,11 @@ app OpenSaaS {
     // Note that the "Dummy" provider is just for local development purposes. 
     // Make sure to check the server logs for the confirmation email token (it will not be sent to an address)!
     // Please use SendGrid in production. See: https://docs.opensaas.sh/guides/email-sending/
-    provider: Dummy, 
+    provider: Mailgun, 
     defaultFrom: {
-      name: "CryptoTx test",
+      name: "CryptoTx",
       // When using SendGrid, you must use the same email address that you configured your account to send out emails with!
-      email: "test-noreply@qbkdigital.com" 
+      email: "postmaster@sandbox93e5bfb52ca545cb93cb504e64076592.mailgun.org" 
     },
   },
 }
@@ -82,6 +84,8 @@ entity User {=psl
   id                        Int             @id @default(autoincrement())
   email                     String?         @unique
   username                  String?         @unique
+  //First name                String
+  //Last name                 String
   createdAt                 DateTime        @default(now())
   lastActiveTimestamp       DateTime        @default(now())
   isAdmin                   Boolean         @default(false)
@@ -182,7 +186,7 @@ entity Transaction {=psl
   cryptoCurrency          String      // Type of cryptocurrency involved in the transaction
   cryptoCurrencyAmount    Decimal     // Amount of cryptocurrency
   walletAddress           String      @default("0x54548454564") // Default wallet address
-  status                  String      @default("new") // Transaction status
+  status                  String      @default("New") // Transaction status
   commission              Decimal     // Transaction commission
   rate                    Decimal     // Exchange rate at the time of the transaction
   createdAt               DateTime    @default(now())
@@ -200,10 +204,9 @@ psl=}
 entity BankDetails {=psl
   id                      Int             @id @default(autoincrement())
   accountName             String
-  accountNumber           String
+  iban                    String
   bankName                String
   bankAddress             String
-  iban                    String
   swift                   String
 
   // Relacja do wielu transakcji
