@@ -11,23 +11,28 @@ import {
   type GetBankDetailsByCurrency,
   type GetPaginatedTransactions,
   type GetPaginatedAdminTransactions,
+  type GetBankDetailsById
 } from 'wasp/server/operations';
 import { getDownloadFileSignedURLFromS3 } from './file-upload/s3Utils.js';
 import { type SubscriptionStatusOptions } from '../shared/types.js';
 
-
-
 export type GetPaginatedAdminTransactionsInput = {
   skip: number;
-  transactionIdContains?: string;
-  userId?: number;
+  paymentIdContains?: string;
+  userEmailContains?: string;
   status?: string;
+  createdAtFrom?: Date;
+  createdAtTo?: Date;
+  modifiedByEmail?: string;
+  modifiedDateFrom?: Date;
+  modifiedDateTo?: Date;
 };
 
 export type GetPaginatedAdminTransactionsOutput = {
   transactions: {
-    transactionId: string;
-    userId: number;
+    transactionId: number;
+    paymentId: string;
+    userEmail: string;
     fiatAmount: number;
     cryptoCurrency: string;
     cryptoCurrencyAmount: number;
@@ -43,47 +48,86 @@ export type GetPaginatedAdminTransactionsOutput = {
   totalPages: number;
 };
 
-
 export const getPaginatedAdminTransactions = async (
-  { skip, transactionIdContains, userId, status }: GetPaginatedAdminTransactionsInput,
+  { skip, paymentIdContains, userEmailContains, status, createdAtFrom, createdAtTo, modifiedByEmail, modifiedDateFrom, modifiedDateTo }: GetPaginatedAdminTransactionsInput,
   context
 ): Promise<GetPaginatedAdminTransactionsOutput> => {
   if (!context.user || !context.user.isAdmin) {
     throw new HttpError(401, 'Unauthorized');
   }
 
-  const whereConditions = {
-    AND: [
-      {
-        transactionId: {
-          contains: transactionIdContains || undefined,
-          mode: 'insensitive',
-        },
-        userId: userId || undefined,
-        status: status || undefined,
+  const whereConditions: any = {};
+
+  if (paymentIdContains) {
+    whereConditions.paymentId = {
+      contains: paymentIdContains,
+      mode: 'insensitive',
+    };
+  }
+
+  if (userEmailContains) {
+    whereConditions.user = {
+      email: {
+        contains: userEmailContains,
+        mode: 'insensitive',
       },
-    ],
-  };
+    };
+  }
+
+  if (status) {
+    whereConditions.status = status;
+  }
+
+  if (createdAtFrom || createdAtTo) {
+    whereConditions.createdAt = {};
+    if (createdAtFrom) {
+      whereConditions.createdAt.gte = new Date(createdAtFrom);
+    }
+    if (createdAtTo) {
+      whereConditions.createdAt.lte = new Date(createdAtTo);
+    }
+  }
+
+  if (modifiedByEmail) {
+    whereConditions.lastModifiedBy = {
+      email: {
+        contains: modifiedByEmail,
+        mode: 'insensitive',
+      },
+    };
+  }
+
+  if (modifiedDateFrom || modifiedDateTo) {
+    whereConditions.lastChangeDate = {};
+    if (modifiedDateFrom) {
+      whereConditions.lastChangeDate.gte = new Date(modifiedDateFrom);
+    }
+    if (modifiedDateTo) {
+      whereConditions.lastChangeDate.lte = new Date(modifiedDateTo);
+    }
+  }
 
   const totalCount = await context.entities.Transaction.count({
     where: whereConditions,
   });
 
   const transactions = await context.entities.Transaction.findMany({
-    skip: skip,
+    skip,
     take: 10,
     where: whereConditions,
     include: {
       lastModifiedBy: true,
+      user: true,
     },
     orderBy: {
       createdAt: 'desc',
     },
   });
 
-  const transactionsWithEmail = transactions.map(transaction => ({
+  const transactionsWithDetails = transactions.map(transaction => ({
     transactionId: transaction.transactionId,
-    userId: transaction.userId,
+    paymentId: transaction.paymentId,
+    userEmail: transaction.user.email,
     fiatAmount: transaction.fiatAmount,
     cryptoCurrency: transaction.cryptoCurrency,
     cryptoCurrencyAmount: transaction.cryptoCurrencyAmount,
@@ -98,12 +142,88 @@ export const getPaginatedAdminTransactions = async (
   }));
 
   return {
-    transactions: transactionsWithEmail,
+    transactions: transactionsWithDetails,
     totalPages: Math.ceil(totalCount / 10),
   };
 };
 
 
+
+export type GetPaginatedTransactionsInput = {
+  skip: number;
+  userId: number;
+  paymentId?: string;
+  status?: string;
+  createdAtFrom?: Date;
+  createdAtTo?: Date;
+};
+
+export type GetPaginatedTransactionsOutput = {
+  transactions: Pick<Transaction, 'transactionId' | 'paymentId' | 'fiatAmount' | 'cryptoCurrency' | 'cryptoCurrencyAmount' | 'walletAddress' | 'status' | 'createdAt'>[];
+  totalPages: number;
+};
+
+export const getPaginatedTransactions = async (
+  { skip, userId, paymentId, status, createdAtFrom, createdAtTo }: GetPaginatedTransactionsInput,
+  context
+): Promise<GetPaginatedTransactionsOutput> => {
+  if (!context.user || context.user.id !== userId) {
+    throw new HttpError(401, 'Unauthorized');
+  }
+
+  const whereConditions: any = { userId };
+
+  if (paymentId) {
+    whereConditions.paymentId = {
+      contains: paymentId,
+      mode: 'insensitive', // Umożliwia wyszukiwanie fragmentów tekstu, niezależnie od wielkości liter
+    };
+  }
+
+  if (status) {
+    whereConditions.status = status;
+  }
+
+  if (createdAtFrom || createdAtTo) {
+    whereConditions.createdAt = {};
+    if (createdAtFrom) {
+      whereConditions.createdAt.gte = new Date(createdAtFrom);
+    }
+    if (createdAtTo) {
+      whereConditions.createdAt.lte = new Date(createdAtTo);
+    }
+  }
+
+  const totalCount = await context.entities.Transaction.count({
+    where: whereConditions,
+  });
+
+  const transactions = await context.entities.Transaction.findMany({
+    skip,
+    take: 10,
+    where: whereConditions,
+    select: {
+      transactionId: true,
+      paymentId: true,
+      fiatAmount: true,
+      cryptoCurrency: true,
+      cryptoCurrencyAmount: true,
+      walletAddress: true,
+      status: true,
+      createdAt: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  return {
+    transactions,
+    totalPages: Math.ceil(totalCount / 10),
+  };
+};
+
+/*
 export type GetPaginatedTransactionsInput = {
   skip: number;
   userId: number;
@@ -150,6 +270,8 @@ export const getPaginatedTransactions = async (
   };
 };
 
+*/
+
 type DailyStatsWithSources = DailyStats & {
   sources: PageViewSource[];
 };
@@ -194,28 +316,19 @@ export const getBankDetailsByCurrency = async (currencyCode, context) => {
 };
 
 
-/* dziłajaca funkcja
-export const getBankDetailsByCurrency = async (currencyCode, context) => {
+export const getBankDetailsById = async ({ id }, context) => {
   if (!context.user) throw new HttpError(401, 'Unauthorized');
 
-  // Pobranie wszystkich BankDetails na podstawie kodu waluty
-  const bankDetails = await context.entities.BankDetails.findMany({
-    where: {
-      fiatCurrencies: {
-        some: {
-          currencyCode: currencyCode
-        }
-      }
-    }
+  const bankDetails = await context.entities.BankDetails.findUnique({
+    where: { id: id },
   });
 
-  // Zwróć całą listę pasujących BankDetails
+  if (!bankDetails) {
+    throw new HttpError(404, `No bank details found for the id: ${id}`);
+  }
+
   return bankDetails;
 };
-*/
-
-
-
 
 
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from 'react-modal';
 import { useAction, editTransaction } from 'wasp/client/operations';
 
@@ -12,6 +12,18 @@ const EditTransactionModal = ({ transaction, isOpen, onRequestClose }) => {
   const [status, setStatus] = useState(transaction?.status || '');
   const [commission, setCommission] = useState(transaction?.commission || 0);
   const [rate, setRate] = useState(transaction?.rate || 0);
+
+  useEffect(() => {
+    if (transaction) {
+      setFiatAmount(transaction.fiatAmount);
+      setCryptoCurrency(transaction.cryptoCurrency);
+      setCryptoCurrencyAmount(transaction.cryptoCurrencyAmount);
+      setWalletAddress(transaction.walletAddress);
+      setStatus(transaction.status);
+      setCommission(transaction.commission);
+      setRate(transaction.rate);
+    }
+  }, [transaction]);
 
   const editTransactionAction = useAction(editTransaction);
 

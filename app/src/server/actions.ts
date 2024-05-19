@@ -18,35 +18,35 @@ import { TierIds } from '../shared/constants.js';
 import { getUploadFileSignedURLFromS3 } from './file-upload/s3Utils.js';
 import OpenAI from 'openai';
 import { GetBankDetailsByCurrency, GetFiatCurrencyIdByCode } from 'wasp/server/operations';
+import { TransactionStatus } from '../shared/constants';
 
-export type EditTransactionInput = {
-  transactionId: string;
-  updates: {
-    fiatAmount?: number;
-    cryptoCurrency?: string;
-    cryptoCurrencyAmount?: number;
-    walletAddress?: string;
-    status?: string;
-    commission?: number;
-    rate?: number;
-  };
-};
 
-export const editTransaction = async (
-  { transactionId, updates }: EditTransactionInput,
-  context
-) => {
-  if (!context.user || !context.user.isAdmin) {
-    throw new HttpError(401, 'Unauthorized');
-  }
 
-  const transaction = await context.entities.Transaction.update({
-    where: { transactionId },
-    data: updates,
+async function generatePaymentId(context) {
+  // Fetch the latest transaction
+  const latestTransaction = await context.entities.Transaction.findFirst({
+    orderBy: {
+      transactionId: 'desc'
+    }
   });
 
-  return transaction;
-};
+  // Determine the next transactionId, starting from 1 if no transactions exist
+  const nextTransactionId = latestTransaction ? latestTransaction.transactionId + 1 : 1;
+
+  // Generate the paymentId based on the next transactionId
+  const nextPaymentId = 1000 + nextTransactionId;
+
+  // Get the current date
+  const date = new Date();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+
+  // Return the formatted paymentId
+  return `${nextPaymentId}/1/${month}/${year}`;
+}
+
+
+
 
 export const createTransaction = async ({ data }, context) => {
   if (!context.user) throw new HttpError(401, 'Unauthorized');
@@ -55,6 +55,9 @@ export const createTransaction = async ({ data }, context) => {
   if (!data.fiatCurrencyId || !data.bankDetailsId) {
     throw new HttpError(400, 'Missing fiatCurrencyId or bankDetailsId');
   }
+
+  // Generowanie unikalnego PaymentId
+  const paymentId = await generatePaymentId(context);
 
   // Tworzenie transakcji z podstawowymi danymi, w tym ustawieniem użytkownika, który ją ostatnio zmodyfikował
   const createdTransaction = await context.entities.Transaction.create({
@@ -70,12 +73,48 @@ export const createTransaction = async ({ data }, context) => {
       rate: parseFloat(data.rate || '0'),
       lastChangeDate: new Date(),  // Data ostatniej zmiany, ustawiona na obecny czas
       bankDetailsId: data.bankDetailsId,
-      status: 'new'
+      status: 'New',
+      paymentId: paymentId, // Dodanie wygenerowanego PaymentId
     }
   });
   
   return createdTransaction;
 };
+
+
+export type EditTransactionInput = {
+  transactionId: string;
+  updates: {
+    fiatAmount?: number;
+    cryptoCurrency?: string;
+    cryptoCurrencyAmount?: number;
+    walletAddress?: string;
+    status?: TransactionStatus;
+    commission?: number;
+    rate?: number;
+  };
+};
+
+export const editTransaction = async (
+  { transactionId, updates }: EditTransactionInput,
+  context
+) => {
+  if (!context.user || !context.user.isAdmin) {
+    throw new HttpError(401, 'Unauthorized');
+  }
+
+  if (updates.status && !Object.values(TransactionStatus).includes(updates.status)) {
+    throw new HttpError(400, 'Invalid status value');
+  }
+
+  const transaction = await context.entities.Transaction.update({
+    where: { transactionId },
+    data: updates,
+  });
+
+  return transaction;
+};
+
 
 
 const openai = setupOpenAI();

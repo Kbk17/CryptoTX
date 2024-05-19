@@ -7,3 +7,11 @@ export enum TierIds {
 export const DOCS_URL = 'https://docs.opensaas.sh';
 export const BLOG_URL = 'https://docs.opensaas.sh/blog';
 export const SIGNUP_PAGE = '/signup';
+
+
+export enum TransactionStatus {
+  NEW = "New",
+  PENDING = "Pending",
+  COMPLETED = "Completed",
+  FAILED = "Failed"
+}

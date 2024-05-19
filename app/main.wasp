@@ -178,7 +178,8 @@ entity Logs {=psl
 psl=}
 
 entity Transaction {=psl
-  transactionId           String      @id @default(uuid())
+  //transactionId           String      @id @default(uuid())
+  transactionId           Int         @id @default(autoincrement())
   userId                  Int         // Reference to the User model
   fiatCurrencyId          Int         // ID of the fiat currency used in the transaction
   fiatCurrency            FiatCurrency @relation("FiatCurrencyToTransaction", fields: [fiatCurrencyId], references: [id]) // Ustalona relacja do FiatCurrency
@@ -196,6 +197,7 @@ entity Transaction {=psl
   lastModifiedBy          User        @relation("LastModifiedBy", fields: [lastModifiedByUserId], references: [id]) // Relation to the User who last modified the transaction
   bankDetailsId           Int
   bankDetails             BankDetails @relation(name: "BankDetailsToTransaction", fields: [bankDetailsId], references: [id])
+  paymentId               String
 psl=}
 
 
@@ -225,15 +227,6 @@ entity FiatCurrency {=psl
   bankDetails     BankDetails? @relation(name: "BankToFiat", fields: [bankDetailsId], references: [id])
 psl=}
 
-query getPaginatedTransactions {
-  fn: import { getPaginatedTransactions } from "@src/server/queries.js",
-  entities: [Transaction, User]  // Assuming it involves these entities
-}
-
-query getPaginatedAdminTransactions {
-  fn: import { getPaginatedAdminTransactions } from "@src/server/queries.js",
-  entities: [Transaction, User]  // Assuming it involves these entities
-}
 
 /* 📡 These are the Wasp Routes (You can protect them easily w/ 'authRequired: true');
  * https://wasp-lang.dev/docs/tutorial/pages
@@ -433,6 +426,22 @@ action editTransaction {
 }
 
 // 📚 Queries
+
+query getBankDetailsById {
+  fn: import { getBankDetailsById } from "@src/server/queries.js"
+}
+
+
+query getPaginatedTransactions {
+  fn: import { getPaginatedTransactions } from "@src/server/queries.js",
+  entities: [Transaction, User]  // Assuming it involves these entities
+}
+
+query getPaginatedAdminTransactions {
+  fn: import { getPaginatedAdminTransactions } from "@src/server/queries.js",
+  entities: [Transaction, User]  // Assuming it involves these entities
+}
+
 
 query getBankDetailsByCurrency {
   fn: import { getBankDetailsByCurrency } from "@src/server/queries.js",
