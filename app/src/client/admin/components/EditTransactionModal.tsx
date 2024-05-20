@@ -4,12 +4,19 @@ import { useAction, editTransaction } from 'wasp/client/operations';
 
 Modal.setAppElement('#root');
 
+const statuses = [
+  { value: 'New', label: 'New' },
+  { value: 'Pending', label: 'Pending' },
+  { value: 'Completed', label: 'Completed' },
+  { value: 'Failed', label: 'Failed' },
+];
+
 const EditTransactionModal = ({ transaction, isOpen, onRequestClose }) => {
   const [fiatAmount, setFiatAmount] = useState(transaction?.fiatAmount || 0);
   const [cryptoCurrency, setCryptoCurrency] = useState(transaction?.cryptoCurrency || '');
   const [cryptoCurrencyAmount, setCryptoCurrencyAmount] = useState(transaction?.cryptoCurrencyAmount || 0);
   const [walletAddress, setWalletAddress] = useState(transaction?.walletAddress || '');
-  const [status, setStatus] = useState(transaction?.status || '');
+  const [status, setStatus] = useState(transaction?.status || statuses[0].value);
   const [commission, setCommission] = useState(transaction?.commission || 0);
   const [rate, setRate] = useState(transaction?.rate || 0);
 
@@ -77,7 +84,16 @@ const EditTransactionModal = ({ transaction, isOpen, onRequestClose }) => {
           </div>
           <div className="mb-4">
             <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Status</label>
-            <input type="text" id="status" value={status} onChange={(e) => setStatus(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 dark:bg-gray-600 dark:border-gray-500" />
+            <select
+              id="status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 dark:bg-gray-600 dark:border-gray-500"
+            >
+              {statuses.map((status) => (
+                <option key={status.value} value={status.value}>{status.label}</option>
+              ))}
+            </select>
           </div>
           <div className="mb-4">
             <label htmlFor="commission" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Commission</label>

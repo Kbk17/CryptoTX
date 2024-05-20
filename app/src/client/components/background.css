@@ -1,0 +1,37 @@
+@keyframes gradientAnimationLight {
+  0% {
+    background-image: linear-gradient(135deg, #F6D242 10%, #FF52E5 100%);
+  }
+  50% {
+    background-image: linear-gradient(135deg, #FF52E5 10%, #F6D242 100%);
+  }
+  100% {
+    background-image: linear-gradient(135deg, #F6D242 10%, #FF52E5 100%);
+  }
+}
+
+@keyframes gradientAnimationDark {
+  0% {
+    background-image: linear-gradient(135deg, #0f2027 10%, #2c5364 100%);
+  }
+  50% {
+    background-image: linear-gradient(135deg, #2c5364 10%, #0f2027 100%);
+  }
+  100% {
+    background-image: linear-gradient(135deg, #0f2027 10%, #2c5364 100%);
+  }
+}
+
+.light-mode {
+  animation: gradientAnimationLight 10s ease infinite;
+  background-size: 400% 400%;
+}
+
+.dark-mode {
+  animation: gradientAnimationDark 10s ease infinite;
+  background-size: 400% 400%;
+}
+
+.animatedBackground {
+  background-size: 400% 400%;
+}
