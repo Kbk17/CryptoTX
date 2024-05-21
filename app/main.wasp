@@ -2,7 +2,7 @@ app OpenSaaS {
   wasp: {
     version: "^0.13.2"
   },
-  title: "My Open SaaS App",
+  title: "BORCASH Exchange",
   head: [
         "<meta property='og:type' content='website' />",
         "<meta property='og:title' content='My Open SaaS App' />",
@@ -51,7 +51,7 @@ app OpenSaaS {
       // },
     },
     onAuthFailedRedirectTo: "/login",
-    onAuthSucceededRedirectTo: "/demo-app",
+    onAuthSucceededRedirectTo: "/add-transaction",
   },
   db: { 
     system: PostgreSQL,

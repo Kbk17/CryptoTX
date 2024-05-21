@@ -320,16 +320,27 @@ export const getBankDetailsById = async ({ id }, context) => {
   if (!context.user) throw new HttpError(401, 'Unauthorized');
 
   const bankDetails = await context.entities.BankDetails.findUnique({
-    where: { id: id },
+    where: { id },
   });
 
   if (!bankDetails) {
     throw new HttpError(404, `No bank details found for the id: ${id}`);
   }
 
+  const transaction = await context.entities.Transaction.findFirst({
+    where: { bankDetailsId: id },
+  });
+
+  if (!transaction) {
+    throw new HttpError(404, 'Transaction not found');
+  }
+
+  if (!context.user.isAdmin && context.user.id !== transaction.userId) {
+    throw new HttpError(403, 'Forbidden');
+  }
+
   return bankDetails;
 };
-
 
 
 export const getGptResponses: GetGptResponses<void, GptResponse[]> = async (args, context) => {
