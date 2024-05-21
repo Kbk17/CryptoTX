@@ -428,8 +428,10 @@ action editTransaction {
 // 📚 Queries
 
 query getBankDetailsById {
-  fn: import { getBankDetailsById } from "@src/server/queries.js"
+  fn: import { getBankDetailsById } from "@src/server/queries.js",
+  entities: [BankDetails, Transaction, User]
 }
+
 
 
 query getPaginatedTransactions {

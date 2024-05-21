@@ -44,6 +44,7 @@ export type GetPaginatedAdminTransactionsOutput = {
     lastChangeDate: Date;
     lastModifiedByUserId: number;
     lastModifiedByEmail: string;
+    bankDetailsId: number; // Added this line
   }[];
   totalPages: number;
 };
@@ -139,6 +140,7 @@ export const getPaginatedAdminTransactions = async (
     lastChangeDate: transaction.lastChangeDate,
     lastModifiedByUserId: transaction.lastModifiedByUserId,
     lastModifiedByEmail: transaction.lastModifiedBy ? transaction.lastModifiedBy.email : 'N/A',
+    bankDetailsId: transaction.bankDetailsId, // Added this line
   }));
 
   return {
@@ -159,7 +161,7 @@ export type GetPaginatedTransactionsInput = {
 };
 
 export type GetPaginatedTransactionsOutput = {
-  transactions: Pick<Transaction, 'transactionId' | 'paymentId' | 'fiatAmount' | 'cryptoCurrency' | 'cryptoCurrencyAmount' | 'walletAddress' | 'status' | 'createdAt'>[];
+  transactions: Pick<Transaction, 'transactionId' | 'paymentId' | 'fiatAmount' | 'cryptoCurrency' | 'cryptoCurrencyAmount' | 'walletAddress' | 'status' | 'createdAt' | 'bankDetailsId'>[];
   totalPages: number;
 };
 
@@ -176,7 +178,7 @@ export const getPaginatedTransactions = async (
   if (paymentId) {
     whereConditions.paymentId = {
       contains: paymentId,
-      mode: 'insensitive', // Umożliwia wyszukiwanie fragmentów tekstu, niezależnie od wielkości liter
+      mode: 'insensitive',
     };
   }
 
@@ -211,6 +213,7 @@ export const getPaginatedTransactions = async (
       walletAddress: true,
       status: true,
       createdAt: true,
+      bankDetailsId: true, // Dodano to pole, aby było zwracane
     },
     orderBy: {
       createdAt: 'desc',
@@ -222,6 +225,7 @@ export const getPaginatedTransactions = async (
     totalPages: Math.ceil(totalCount / 10),
   };
 };
+
 
 /*
 export type GetPaginatedTransactionsInput = {

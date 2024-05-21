@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, getPaginatedTransactions } from 'wasp/client/operations';
-import { FaSearch, FaFilter } from 'react-icons/fa'; // Importujemy ikony
+import { useQuery, getPaginatedTransactions, getBankDetailsById } from 'wasp/client/operations';
+import { FaSearch, FaFilter } from 'react-icons/fa';
 
 const Loader = () => {
   return (
@@ -15,7 +15,7 @@ interface FiatCurrency {
 }
 
 interface Transaction {
-  transactionId: string;
+  transactionId: number;
   paymentId: string;
   fiatAmount: number;
   cryptoCurrency: string;
@@ -24,6 +24,7 @@ interface Transaction {
   status: string;
   createdAt: Date;
   fiatCurrency: FiatCurrency;
+  bankDetailsId: number; // Ensure this is included
 }
 
 interface TransactionsData {
@@ -34,22 +35,36 @@ interface TransactionsData {
 const TransactionsTable = () => {
   const [skip, setSkip] = useState(0);
   const [page, setPage] = useState(1);
-  const [userId] = useState(1);
+  const [userId] = useState(1); // Replace with actual userId
   const [paymentId, setPaymentId] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<string | undefined>(undefined);
   const [createdAtFrom, setCreatedAtFrom] = useState<Date | undefined>(undefined);
   const [createdAtTo, setCreatedAtTo] = useState<Date | undefined>(undefined);
   const [filters, setFilters] = useState({ paymentId: '', status: '', createdAtFrom: '', createdAtTo: '' });
   const [showFilters, setShowFilters] = useState(false);
+  const [bankDetails, setBankDetails] = useState<any>(null);
+  const [selectedBankDetailsId, setSelectedBankDetailsId] = useState<number | null>(null);
 
   const { data, isLoading, error } = useQuery(getPaginatedTransactions, {
     skip,
     userId,
-    paymentId: paymentId ? `%${paymentId}%` : undefined, // Używamy wildcarda do wyszukiwania fragmentów
+    paymentId: paymentId ? `%${paymentId}%` : undefined,
     status,
     createdAtFrom,
     createdAtTo,
   });
+
+  const { data: bankData, refetch: fetchBankDetails } = useQuery(getBankDetailsById, {
+    id: selectedBankDetailsId,
+  }, {
+    enabled: !!selectedBankDetailsId, // Enable fetching only when bankDetailsId is set
+  });
+
+  useEffect(() => {
+    if (bankData) {
+      setBankDetails(bankData);
+    }
+  }, [bankData]);
 
   useEffect(() => {
     setSkip((page - 1) * 10);
@@ -61,6 +76,16 @@ const TransactionsTable = () => {
     setCreatedAtFrom(filters.createdAtFrom ? new Date(filters.createdAtFrom) : undefined);
     setCreatedAtTo(filters.createdAtTo ? new Date(filters.createdAtTo) : undefined);
     setPage(1);
+  };
+
+  const handleShowBankDetails = (bankDetailsId: number) => {
+    if (selectedBankDetailsId === bankDetailsId) {
+      // If the same ID is clicked again, toggle off
+      setSelectedBankDetailsId(null);
+      setBankDetails(null);
+    } else {
+      setSelectedBankDetailsId(bankDetailsId);
+    }
   };
 
   if (isLoading) return <Loader />;
@@ -167,9 +192,21 @@ const TransactionsTable = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{transaction.walletAddress}</td>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${transaction.status === 'Completed' ? 'text-green-500' : 'text-red-500'} dark:text-gray-300`}>{transaction.status}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <button className="text-blue-500 dark:text-blue-400">
+                    <button 
+                      className="text-blue-500 dark:text-blue-400"
+                      onClick={() => handleShowBankDetails(transaction.bankDetailsId)}
+                    >
                       Show Bank Details
                     </button>
+                    {bankDetails && selectedBankDetailsId === transaction.bankDetailsId && (
+                      <div className="mt-2 text-sm text-gray-700 dark:text-gray-400">
+                        <p>Account Name: {bankDetails.accountName}</p>
+                        <p>IBAN: {bankDetails.iban}</p>
+                        <p>Bank Name: {bankDetails.bankName}</p>
+                        <p>Bank Address: {bankDetails.bankAddress}</p>
+                        <p>SWIFT: {bankDetails.swift}</p>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

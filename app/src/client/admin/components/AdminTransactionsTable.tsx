@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Modal from 'react-modal';
-import { getPaginatedAdminTransactions, useQuery } from 'wasp/client/operations';
+import { getPaginatedAdminTransactions, getBankDetailsById, useQuery } from 'wasp/client/operations';
 import EditTransactionModal from './EditTransactionModal';
 import Loader from '../common/Loader';
 import { FaSearch, FaFilter } from 'react-icons/fa';
@@ -22,6 +22,7 @@ interface Transaction {
   lastChangeDate: Date;
   lastModifiedByUserId: number;
   lastModifiedByEmail: string;
+  bankDetailsId: number; // Ensure this is included
 }
 
 interface TransactionsData {
@@ -53,6 +54,8 @@ const AdminTransactionsTable = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [selectedBankDetailsId, setSelectedBankDetailsId] = useState<number | null>(null);
+  const [bankDetails, setBankDetails] = useState<any>(null);
 
   const { data, isLoading, error } = useQuery(getPaginatedAdminTransactions, {
     skip,
@@ -65,6 +68,18 @@ const AdminTransactionsTable = () => {
     modifiedDateFrom,
     modifiedDateTo
   });
+
+  const { data: bankData, refetch: fetchBankDetails } = useQuery(getBankDetailsById, {
+    id: selectedBankDetailsId,
+  }, {
+    enabled: !!selectedBankDetailsId, // Enable fetching only when bankDetailsId is set
+  });
+
+  useEffect(() => {
+    if (bankData) {
+      setBankDetails(bankData);
+    }
+  }, [bankData]);
 
   useEffect(() => {
     setSkip((page - 1) * 10);
@@ -90,6 +105,16 @@ const AdminTransactionsTable = () => {
   const closeModal = () => {
     setModalIsOpen(false);
     setSelectedTransaction(null);
+  };
+
+  const handleShowBankDetails = (bankDetailsId: number) => {
+    if (selectedBankDetailsId === bankDetailsId) {
+      // If the same ID is clicked again, toggle off
+      setSelectedBankDetailsId(null);
+      setBankDetails(null);
+    } else {
+      setSelectedBankDetailsId(bankDetailsId);
+    }
   };
 
   if (isLoading) return <Loader />;
@@ -225,6 +250,7 @@ const AdminTransactionsTable = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-100 dark:bg-gray-700">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Edit</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Email</th>
@@ -238,12 +264,15 @@ const AdminTransactionsTable = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Change Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Modified By Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Edit</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {data?.transactions.map((transaction) => (
                 <tr key={transaction.transactionId}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                    <a href="#" onClick={() => openModal(transaction)} className="text-blue-500 hover:underline">Edit</a>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{transaction.transactionId}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{transaction.paymentId}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{transaction.userEmail}</td>
@@ -257,8 +286,22 @@ const AdminTransactionsTable = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{new Date(transaction.createdAt).toLocaleString()}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{new Date(transaction.lastChangeDate).toLocaleString()}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">{transaction.lastModifiedByEmail}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                    <a href="#" onClick={() => openModal(transaction)} className="text-blue-500 hover:underline">Edit</a>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button 
+                      className="text-blue-500 dark:text-blue-400"
+                      onClick={() => handleShowBankDetails(transaction.bankDetailsId)}
+                    >
+                      Show Bank Details
+                    </button>
+                    {bankDetails && selectedBankDetailsId === transaction.bankDetailsId && (
+                      <div className="mt-2 text-sm text-gray-700 dark:text-gray-400">
+                        <p>Account Name: {bankDetails.accountName}</p>
+                        <p>IBAN: {bankDetails.iban}</p>
+                        <p>Bank Name: {bankDetails.bankName}</p>
+                        <p>Bank Address: {bankDetails.bankAddress}</p>
+                        <p>SWIFT: {bankDetails.swift}</p>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
