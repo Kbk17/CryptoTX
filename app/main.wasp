@@ -26,8 +26,8 @@ app OpenSaaS {
     methods: {
       email: {
         fromField: {
-          name: "Open SaaS App",
-          email: "me@example.com", 
+          name: "Borcash Exchange",
+          email: "noreply@auth.borcash.io", 
           //firstName: "asd",
           //lastName: "asd",
         },
@@ -69,9 +69,9 @@ app OpenSaaS {
     // Please use SendGrid in production. See: https://docs.opensaas.sh/guides/email-sending/
     provider: Mailgun, 
     defaultFrom: {
-      name: "CryptoTx",
+      name: "Borcash Exchange",
       // When using SendGrid, you must use the same email address that you configured your account to send out emails with!
-      email: "postmaster@sandbox93e5bfb52ca545cb93cb504e64076592.mailgun.org" 
+      email: "noreply@auth.borcash.io" 
     },
   },
 }

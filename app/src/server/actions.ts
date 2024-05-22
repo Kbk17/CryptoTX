@@ -69,7 +69,7 @@ export const createTransaction = async ({ data }, context) => {
       cryptoCurrency: data.cryptoCurrency,
       cryptoCurrencyAmount: parseFloat(data.cryptoCurrencyAmount || '0'),
       walletAddress: data.walletAddress || '0x54548454564',
-      commission: parseFloat(data.commission || '0'),
+      commission: parseFloat(data.commission || '5'),
       rate: parseFloat(data.rate || '0'),
       lastChangeDate: new Date(),  // Data ostatniej zmiany, ustawiona na obecny czas
       bankDetailsId: data.bankDetailsId,

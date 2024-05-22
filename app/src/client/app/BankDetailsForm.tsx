@@ -4,7 +4,6 @@ import { faClipboard } from '@fortawesome/free-solid-svg-icons';
 
 type BankDetailsFormProps = {
   bankDetails: {
-    id: number;
     bankName: string;
     accountName: string;
     accountNumber: string;
@@ -32,6 +31,9 @@ const BankDetailsForm: React.FC<BankDetailsFormProps> = ({ bankDetails, paymentI
   return (
     <div className="w-full flex flex-col h-full">
       <h2 className="text-title-md font-satoshi text-primary mb-4">Bank Details</h2>
+      <p className="text-body mb-4" style={{ color: '#cc6666' }}>
+        Payments must be sent exclusively from your own account, ensuring all account details match those verified by the system to prevent delays.
+      </p>
       <ul className="space-y-2 flex-grow">
         {Object.entries(bankDetails).map(([key, value]) => (
           <li key={key} className="flex justify-between items-center py-2">
@@ -46,11 +48,15 @@ const BankDetailsForm: React.FC<BankDetailsFormProps> = ({ bankDetails, paymentI
       <div className="flex justify-between items-center py-2">
         <label htmlFor="paymentDescription" className="font-bold capitalize text-bodydark">Payment ID:</label>
         <span className="flex items-center text-body">
-          {paymentId}{userId}
-          <FontAwesomeIcon icon={faClipboard} className="w-5 h-5 ml-2 cursor-pointer text-primary" onClick={() => copyToClipboard(`${paymentId}${userId}`)} />
+          <strong>{paymentId}</strong>
+          <FontAwesomeIcon icon={faClipboard} className="w-5 h-5 ml-2 cursor-pointer text-primary" onClick={() => copyToClipboard(paymentId)} />
         </span>
       </div>
-      <p className="text-danger mt-4">Transactions not settled within 14 business days will be cancelled. Please transfer only from your own account. Ensure all details match your bank account information to avoid delays.</p>
+      <div className="mt-4">
+        <p className="text-body">
+          Deposits will be returned and additional fees applied if payments are made from unverified third parties. Payments with incorrect stated purposes, amounts exceeding 14,500 EUR without source confirmation within 2 working days, or incorrect recipient details will also face these issues.
+        </p>
+      </div>
     </div>
   );
 };

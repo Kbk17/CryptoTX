@@ -271,8 +271,8 @@ export default function LandingPage() {
         <div className='mt-4'> {/* Margines górny dla adresu */}
           <p className='text-sm text-gray-600 dark:text-white'>
             Biuro Wymiany Walut Janusz Gancarczyk<br />
-            ul. Zatorska 30<br />
-            44-100 Gliwice, Poland
+            VASP license: RDWW-14<br />
+            NIP: 5511126816
           </p>
         </div>
       </div>
@@ -281,7 +281,7 @@ export default function LandingPage() {
       <div className='flex flex-col sm:mr-10 lg:mr-20'>
         <div className='mb-4'>
           <h3 className='text-sm font-semibold text-gray-900 dark:text-white'>E-mail</h3>
-          <p className='text-sm text-gray-600 dark:text-white'>biurow@borcash.pl</p>
+          <p className='text-sm text-gray-600 dark:text-white'>office@borcash.pl</p>
         </div>
         <div>
           <h3 className='text-sm font-semibold text-gray-900 dark:text-white'>Phone</h3>
