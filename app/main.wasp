@@ -67,7 +67,7 @@ app OpenSaaS {
     // Note that the "Dummy" provider is just for local development purposes. 
     // Make sure to check the server logs for the confirmation email token (it will not be sent to an address)!
     // Please use SendGrid in production. See: https://docs.opensaas.sh/guides/email-sending/
-    provider: Mailgun, 
+    provider: Dummy, 
     defaultFrom: {
       name: "Borcash Exchange",
       // When using SendGrid, you must use the same email address that you configured your account to send out emails with!
@@ -84,11 +84,12 @@ entity User {=psl
   id                        Int             @id @default(autoincrement())
   email                     String?         @unique
   username                  String?         @unique
-  //First name                String
-  //Last name                 String
+  firstName                 String?
+  lastName                  String?
   createdAt                 DateTime        @default(now())
   lastActiveTimestamp       DateTime        @default(now())
   isAdmin                   Boolean         @default(false)
+  isSumsubVerified          Boolean         @default(false)
   stripeId                  String? 
   checkoutSessionId         String?
   subscriptionTier          String?
@@ -423,6 +424,11 @@ action createTransaction {
 action editTransaction {
   fn: import { editTransaction } from "@src/server/actions.js",
   entities: [Transaction, BankDetails, FiatCurrency, User]
+}
+
+action editUserProfile {
+  fn: import { editUserProfile } from "@src/server/actions.js",
+  entities: [User]
 }
 
 // 📚 Queries

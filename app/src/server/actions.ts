@@ -10,6 +10,7 @@ import {
   type UpdateTask,
   type CreateFile,
   type CreateTransaction,
+  type EditUserProfile
 } from 'wasp/server/operations';
 import Stripe from 'stripe';
 import type { GeneratedSchedule, StripePaymentResult } from '../shared/types';
@@ -19,8 +20,40 @@ import { getUploadFileSignedURLFromS3 } from './file-upload/s3Utils.js';
 import OpenAI from 'openai';
 import { GetBankDetailsByCurrency, GetFiatCurrencyIdByCode } from 'wasp/server/operations';
 import { TransactionStatus } from '../shared/constants';
+import axios from 'axios';
 
+export const generateSumsubToken = async (context) => {
+  if (!context.user) {
+    throw new HttpError(401, 'Unauthorized');
+  }
 
+  const sumsubApiUrl = 'https://api.sumsub.com';
+  const sumsubApiKey = process.env.SUMSUB_API_KEY; // Store this securely
+  const sumsubAppToken = process.env.SUMSUB_APP_TOKEN; // Store this securely
+
+  const userId = context.user.id;
+
+  try {
+    const response = await axios.post(`${sumsubApiUrl}/resources/accessTokens`, {
+      userId,
+      levelName: 'basic-kyc-level', // or the appropriate level name
+    }, {
+      headers: {
+        'X-App-Token': sumsubAppToken,
+        'Content-Type': 'application/json',
+      },
+      auth: {
+        username: sumsubApiKey,
+        password: '',
+      },
+    });
+
+    return response.data.token;
+  } catch (error) {
+    console.error('Error generating Sumsub token:', error);
+    throw new HttpError(500, 'Failed to generate Sumsub token');
+  }
+};
 
 async function generatePaymentId(context) {
   // Fetch the latest transaction
@@ -115,6 +148,21 @@ export const editTransaction = async (
   return transaction;
 };
 
+export const editUserProfile = async (
+  { userId, updates }: { userId: number, updates: { firstName?: string, lastName?: string } },
+  context
+) => {
+  if (!context.user) {
+    throw new HttpError(401, 'Unauthorized');
+  }
+
+  const updatedUser = await context.entities.User.update({
+    where: { id: userId },
+    data: updates,
+  });
+
+  return updatedUser;
+};
 
 
 const openai = setupOpenAI();
