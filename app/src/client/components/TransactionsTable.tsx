@@ -35,7 +35,6 @@ interface TransactionsData {
 const TransactionsTable = () => {
   const [skip, setSkip] = useState(0);
   const [page, setPage] = useState(1);
-  const [userId] = useState(1); // Replace with actual userId
   const [paymentId, setPaymentId] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<string | undefined>(undefined);
   const [createdAtFrom, setCreatedAtFrom] = useState<Date | undefined>(undefined);
@@ -47,7 +46,6 @@ const TransactionsTable = () => {
 
   const { data, isLoading, error } = useQuery(getPaginatedTransactions, {
     skip,
-    userId,
     paymentId: paymentId ? `%${paymentId}%` : undefined,
     status,
     createdAtFrom,

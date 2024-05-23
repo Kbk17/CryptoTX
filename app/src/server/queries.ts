@@ -153,7 +153,6 @@ export const getPaginatedAdminTransactions = async (
 
 export type GetPaginatedTransactionsInput = {
   skip: number;
-  userId: number;
   paymentId?: string;
   status?: string;
   createdAtFrom?: Date;
@@ -166,12 +165,14 @@ export type GetPaginatedTransactionsOutput = {
 };
 
 export const getPaginatedTransactions = async (
-  { skip, userId, paymentId, status, createdAtFrom, createdAtTo }: GetPaginatedTransactionsInput,
+  { skip, paymentId, status, createdAtFrom, createdAtTo }: GetPaginatedTransactionsInput,
   context
 ): Promise<GetPaginatedTransactionsOutput> => {
-  if (!context.user || context.user.id !== userId) {
-    throw new HttpError(401, 'Unauthorized');
-  }
+  if (!context.user) throw new HttpError(401, 'Unauthorized');
+
+  const userId = context.user.id;
+  console.log('Context user:', context.user); // Logowanie kontekstu użytkownika
+  console.log('Accessing transactions for userId:', userId); // Logowanie userId
 
   const whereConditions: any = { userId };
 
@@ -213,7 +214,7 @@ export const getPaginatedTransactions = async (
       walletAddress: true,
       status: true,
       createdAt: true,
-      bankDetailsId: true, // Dodano to pole, aby było zwracane
+      bankDetailsId: true,
     },
     orderBy: {
       createdAt: 'desc',
@@ -329,18 +330,6 @@ export const getBankDetailsById = async ({ id }, context) => {
 
   if (!bankDetails) {
     throw new HttpError(404, `No bank details found for the id: ${id}`);
-  }
-
-  const transaction = await context.entities.Transaction.findFirst({
-    where: { bankDetailsId: id },
-  });
-
-  if (!transaction) {
-    throw new HttpError(404, 'Transaction not found');
-  }
-
-  if (!context.user.isAdmin && context.user.id !== transaction.userId) {
-    throw new HttpError(403, 'Forbidden');
   }
 
   return bankDetails;

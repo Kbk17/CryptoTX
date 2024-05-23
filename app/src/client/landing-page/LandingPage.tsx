@@ -152,10 +152,10 @@ export default function LandingPage() {
           <div className='py-24 sm:py-32'>
             <div className='mx-auto max-w-8xl px-6 lg:px-8'>
               <div className='lg:mb-18 mx-auto max-w-3xl text-center'><h1 className='text-4xl font-bold text-gray-900 sm:text-6xl dark:text-white'>
-                    BorCash <span className='italic'>X</span> Midas Exchange
+                    BorCash <span className='italic'>X</span> Your Barnd
                     </h1>
                       <p className='mt-6 mx-auto max-w-2xl text-lg leading-8 text-gray-600 dark:text-white'>
-                        Embark on a seamless journey into the world of cryptocurrency with <strong>BorCash</strong> in collaboration with <strong>Midas Exchange</strong>. Sign up, get verified, and start purchasing cryptocurrency with ease. Choose your currency, select a payment method, and acquire the crypto you need — it's that simple!
+                        Embark on a seamless journey into the world of cryptocurrency with <strong>BorCash</strong> in collaboration with <strong>Your Brand</strong>. Sign up, get verified, and start purchasing cryptocurrency with ease. Choose your currency, select a payment method, and acquire the crypto you need — it's that simple!
                         </p>
 
                 <div className='mt-10 flex items-center justify-center gap-x-6'>
