@@ -5,12 +5,13 @@ import { z } from 'zod';
 import { TierIds } from '../../shared/constants';
 import { useState } from 'react';
 import { PencilIcon } from '@heroicons/react/24/solid';
-import { editUserProfile } from 'wasp/client/operations';
+import { editUserProfile, generateSumsubToken } from 'wasp/client/operations';
+import {SnsWebSdk} from '@sumsub/websdk';
 
 export default function AccountPage({ user }: { user: User }) {
   const [editingField, setEditingField] = useState(null);
 
-  
+
 
   const handleSave = async (field, value) => {
     try {
@@ -22,9 +23,21 @@ export default function AccountPage({ user }: { user: User }) {
     }
   };
 
-  const handleVerificationRedirect = () => {
-    const accessToken = "your-access-token"; // Replace with the actual token
+  const loadSumsubSdk = () => {
+
   };
+  const handleVerificationRedirect = async () => {
+    try {
+      const sumsubResponse = await generateSumsubToken(user.id.toString());
+      if (sumsubResponse && sumsubResponse.url) {
+        window.open(sumsubResponse.url, '_blank'); // Redirect to the Sumsub URL
+      } else {
+        console.error('Sumsub URL is not available in the response:', sumsubResponse);
+      }
+    } catch (error) {
+      console.error('Error creating Sumsub link:', error);
+    }
+  }
 
 
 

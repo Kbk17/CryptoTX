@@ -10,7 +10,8 @@ import {
   type UpdateTask,
   type CreateFile,
   type CreateTransaction,
-  type EditUserProfile
+  type EditUserProfile,
+  type GenerateSumsubToken,
 } from 'wasp/server/operations';
 import Stripe from 'stripe';
 import type { GeneratedSchedule, StripePaymentResult } from '../shared/types';
@@ -20,40 +21,131 @@ import { getUploadFileSignedURLFromS3 } from './file-upload/s3Utils.js';
 import OpenAI from 'openai';
 import { GetBankDetailsByCurrency, GetFiatCurrencyIdByCode } from 'wasp/server/operations';
 import { TransactionStatus } from '../shared/constants';
-import axios from 'axios';
+import axios, { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig, AxiosHeaders } from 'axios';
+import crypto from 'crypto';
 
-export const generateSumsubToken = async (context) => {
-  if (!context.user) {
-    throw new HttpError(401, 'Unauthorized');
+
+// These parameters should be used for all requests
+const SUMSUB_APP_TOKEN = process.env.SUMSUB_APP_TOKEN!;
+const SUMSUB_SECRET_KEY = process.env.SUMSUB_SECRET_KEY!;
+const SUMSUB_BASE_URL = 'https://api.sumsub.com'; 
+
+let config: AxiosRequestConfig = {
+  baseURL: SUMSUB_BASE_URL
+};
+
+axios.interceptors.request.use(createSignature, function (error) {
+  return Promise.reject(error);
+});
+
+// Make sure to specify 'Content-Type' header with value of 'application/json' if you're not sending a body for most of requests
+
+// This function creates signature for the request as described here: https://developers.sumsub.com/api-reference/#app-tokens
+
+function createSignature(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig> {
+  console.log('Creating a signature for the request...');
+  
+
+  const ts = Math.floor(Date.now() / 1000);
+  const signature = crypto.createHmac('sha256', SUMSUB_SECRET_KEY);
+  signature.update(ts + config.method!.toUpperCase() + config.url!);
+
+  if (config.data instanceof FormData) {
+    // @ts-ignore
+    signature.update(config.data.getBuffer());
+  } else if (config.data) {
+    signature.update(config.data);
   }
 
-  const sumsubApiUrl = 'https://api.sumsub.com';
-  const sumsubApiKey = process.env.SUMSUB_API_KEY; // Store this securely
-  const sumsubAppToken = process.env.SUMSUB_APP_TOKEN; // Store this securely
+  const headers = new AxiosHeaders(config.headers || {});
+  headers.set('X-App-Access-Ts', ts.toString());
+  headers.set('X-App-Access-Sig', signature.digest('hex'));
 
-  const userId = context.user.id;
+  config.headers = headers;
+
+  return config;
+}
+
+// https://developers.sumsub.com/api-reference/#creating-an-applicant
+export const generateSumsubToken = async (externalUserId: string, levelName: string = 'basic-kyc-level'): Promise<any> => {
+  console.log("Creating an applicant...");
+  console.log(process.env.SUMSUB_APP_TOKEN);
+
+  const method = 'post';
+  const url = `/resources/sdkIntegrations/levels/basic-kyc-level/websdkLink`;
+  const body = {
+    externalUserId: externalUserId
+  };
+
+  const headers = new AxiosHeaders({
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'X-App-Token': SUMSUB_APP_TOKEN
+  });
+
+  const requestConfig: AxiosRequestConfig = {
+    ...config,
+    method,
+    url,
+    headers,
+    data: JSON.stringify(body)
+  };
 
   try {
-    const response = await axios.post(`${sumsubApiUrl}/resources/accessTokens`, {
-      userId,
-      levelName: 'basic-kyc-level', // or the appropriate level name
-    }, {
-      headers: {
-        'X-App-Token': sumsubAppToken,
-        'Content-Type': 'application/json',
-      },
-      auth: {
-        username: sumsubApiKey,
-        password: '',
-      },
-    });
-
-    return response.data.token;
-  } catch (error) {
-    console.error('Error generating Sumsub token:', error);
-    throw new HttpError(500, 'Failed to generate Sumsub token');
+    const response: AxiosResponse = await axios(requestConfig);
+    console.log("Response:\n", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.log("Error:\n", error.response.data);
+    throw new Error(error.response.data);
   }
-};
+}
+
+
+
+// const generateSignature = (secretKey: string, httpMethod: string, url: string, body: string, timestamp: string) => {
+//   const message = `${httpMethod} ${url} ${body} ${timestamp}`;
+//   const hmac = crypto.createHmac('sha256', secretKey);
+//   hmac.update(message);
+//   return hmac.digest('hex'); // Use 'hex' encoding
+// };
+
+
+
+// const generateSignature = (secretKey: string, httpMethod: string, url: string, body: string, timestamp: string) => {
+//   const message = `${httpMethod} ${url} ${body} ${timestamp}`;
+//   const hmac = crypto.createHmac('sha256', secretKey);
+//   hmac.update(message);
+//   return hmac.digest('base64');
+// };
+
+// export const generateSumsubToken = async (userId: string) => {
+//   const sumsubUrl = 'https://api.sumsub.com/resources/sdkIntegrations/levels/basic-kyc-level/websdkLink';
+//   const httpMethod = 'POST';
+//   const body = JSON.stringify({
+//     externalUserId: userId,
+//   });
+//   const timestamp = Math.floor(Date.now() / 1000).toString();
+//   const signature = generateSignature(SUMSUB_SECRET_KEY, httpMethod, sumsubUrl, body, timestamp);
+
+//   try {
+//     const response = await axios.post(sumsubUrl, body, {
+//       headers: {
+//         'X-App-Token': SUMSUB_API_TOKEN,
+//         'X-App-Access-Sig': signature,
+//         'X-App-Access-Ts': timestamp,
+//         'Content-Type': 'application/json',
+//       },
+//     });
+    
+//     // Handle the response as needed
+//     console.log('Sumsub response:', response.data);
+//     return response.data;
+//   } catch (error) {
+//     console.error('Error making request to Sumsub:', error);
+//     throw new HttpError(500, 'Error interacting with Sumsub API');
+//   }
+// };
 
 async function generatePaymentId(context) {
   // Fetch the latest transaction

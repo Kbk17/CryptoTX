@@ -431,6 +431,13 @@ action editUserProfile {
   entities: [User]
 }
 
+action generateSumsubToken {
+  fn: import { generateSumsubToken } from "@src/server/actions.js",
+  entities: [User]
+}
+
+
+
 // 📚 Queries
 
 query getBankDetailsById {
@@ -528,5 +535,10 @@ job dailyStatsJob {
     // cron: "* * * * *" // every minute. useful for debugging
   },
   entities: [User, DailyStats, Logs, PageViewSource]
+}
+
+api sumsubWebhook {
+  fn: import { sumsubWebhook } from "@src/apis",
+  httpRoute: (POST, "/sumsub/updateApplicant")
 }
 
