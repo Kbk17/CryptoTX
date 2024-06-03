@@ -15,9 +15,13 @@ import {
 } from 'wasp/server/operations';
 import { getDownloadFileSignedURLFromS3 } from './file-upload/s3Utils.js';
 import { type SubscriptionStatusOptions } from '../shared/types.js';
+import { Parser } from '@json2csv/plainjs';
+import { Router } from 'express';
+
 
 export type GetPaginatedAdminTransactionsInput = {
   skip: number;
+  take?: number | null;
   paymentIdContains?: string;
   userEmailContains?: string;
   status?: string;
@@ -44,13 +48,13 @@ export type GetPaginatedAdminTransactionsOutput = {
     lastChangeDate: Date;
     lastModifiedByUserId: number;
     lastModifiedByEmail: string;
-    bankDetailsId: number; // Added this line
+    bankDetailsId: number;
   }[];
   totalPages: number;
 };
 
 export const getPaginatedAdminTransactions = async (
-  { skip, paymentIdContains, userEmailContains, status, createdAtFrom, createdAtTo, modifiedByEmail, modifiedDateFrom, modifiedDateTo }: GetPaginatedAdminTransactionsInput,
+  { skip, take = 10, paymentIdContains, userEmailContains, status, createdAtFrom, createdAtTo, modifiedByEmail, modifiedDateFrom, modifiedDateTo }: GetPaginatedAdminTransactionsInput,
   context
 ): Promise<GetPaginatedAdminTransactionsOutput> => {
   if (!context.user || !context.user.isAdmin) {
@@ -114,7 +118,7 @@ export const getPaginatedAdminTransactions = async (
 
   const transactions = await context.entities.Transaction.findMany({
     skip,
-    take: 10,
+    take: take === null ? undefined : take,
     where: whereConditions,
     include: {
       lastModifiedBy: true,
@@ -140,15 +144,174 @@ export const getPaginatedAdminTransactions = async (
     lastChangeDate: transaction.lastChangeDate,
     lastModifiedByUserId: transaction.lastModifiedByUserId,
     lastModifiedByEmail: transaction.lastModifiedBy ? transaction.lastModifiedBy.email : 'N/A',
-    bankDetailsId: transaction.bankDetailsId, // Added this line
+    bankDetailsId: transaction.bankDetailsId,
   }));
 
-  return {
+  const output: GetPaginatedAdminTransactionsOutput = {
     transactions: transactionsWithDetails,
+    totalPages: take === null ? 1 : Math.ceil(totalCount / take),
+  };
+
+  return output;
+};
+
+
+
+export type GetPaginatedTransactionsInput = {
+  skip: number;
+  paymentId?: string;
+  status?: string;
+  createdAtFrom?: Date;
+  createdAtTo?: Date;
+};
+
+export type GetPaginatedTransactionsOutput = {
+  transactions: Pick<Transaction, 'transactionId' | 'paymentId' | 'fiatAmount' | 'cryptoCurrency' | 'cryptoCurrencyAmount' | 'walletAddress' | 'status' | 'createdAt' | 'bankDetailsId'>[];
+  totalPages: number;
+};
+
+export const getPaginatedTransactions = async (
+  { skip, paymentId, status, createdAtFrom, createdAtTo }: GetPaginatedTransactionsInput,
+  context
+): Promise<GetPaginatedTransactionsOutput> => {
+  if (!context.user) throw new HttpError(401, 'Unauthorized');
+
+  const userId = context.user.id;
+  console.log('Context user:', context.user); // Logowanie kontekstu użytkownika
+  console.log('Accessing transactions for userId:', userId); // Logowanie userId
+
+  const whereConditions: any = { userId };
+
+  if (paymentId) {
+    whereConditions.paymentId = {
+      contains: paymentId,
+      mode: 'insensitive',
+    };
+  }
+
+  if (status) {
+    whereConditions.status = status;
+  }
+
+  if (createdAtFrom || createdAtTo) {
+    whereConditions.createdAt = {};
+    if (createdAtFrom) {
+      whereConditions.createdAt.gte = new Date(createdAtFrom);
+    }
+    if (createdAtTo) {
+      whereConditions.createdAt.lte = new Date(createdAtTo);
+    }
+  }
+
+  const totalCount = await context.entities.Transaction.count({
+    where: whereConditions,
+  });
+
+  const transactions = await context.entities.Transaction.findMany({
+    skip,
+    take: 10,
+    where: whereConditions,
+    select: {
+      transactionId: true,
+      paymentId: true,
+      fiatAmount: true,
+      cryptoCurrency: true,
+      cryptoCurrencyAmount: true,
+      walletAddress: true,
+      status: true,
+      createdAt: true,
+      bankDetailsId: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  return {
+    transactions,
     totalPages: Math.ceil(totalCount / 10),
   };
 };
 
+/*
+
+export const getPaginatedAdminTransactionsCSV = async (
+  {
+    skip,
+    paymentIdContains,
+    userEmailContains,
+    status,
+    createdAtFrom,
+    createdAtTo,
+    modifiedByEmail,
+    modifiedDateFrom,
+    modifiedDateTo,
+  }: GetPaginatedAdminTransactionsInput,
+  context
+): Promise<string> => {
+  if (!context.user || !context.user.isAdmin) {
+    throw new HttpError(401, 'Unauthorized');
+  }
+
+  // Reuse the existing function to get filtered transactions
+  const { transactions } = await getPaginatedAdminTransactions(
+    {
+      skip,
+      paymentIdContains,
+      userEmailContains,
+      status,
+      createdAtFrom,
+      createdAtTo,
+      modifiedByEmail,
+      modifiedDateFrom,
+      modifiedDateTo,
+    },
+    context
+  );
+
+  // Convert transactions to CSV format
+  const headers = [
+    'Transaction ID',
+    'Payment ID',
+    'User Email',
+    'Fiat Amount',
+    'Crypto Currency',
+    'Crypto Currency Amount',
+    'Wallet Address',
+    'Status',
+    'Commission',
+    'Rate',
+    'Created At',
+    'Last Change Date',
+    'Last Modified By Email',
+    'Bank Details ID',
+  ];
+
+  const csvRows = [
+    headers.join(','), // Header row
+    ...transactions.map(transaction =>
+      [
+        transaction.transactionId,
+        transaction.paymentId,
+        transaction.userEmail,
+        transaction.fiatAmount,
+        transaction.cryptoCurrency,
+        transaction.cryptoCurrencyAmount,
+        transaction.walletAddress,
+        transaction.status,
+        transaction.commission,
+        transaction.rate,
+        transaction.createdAt.toISOString(),
+        transaction.lastChangeDate.toISOString(),
+        transaction.lastModifiedByEmail,
+        transaction.bankDetailsId,
+      ].join(',')
+    ),
+  ];
+
+  const csvString = csvRows.join('\n');
+  return csvString;
+};
 
 
 export type GetPaginatedTransactionsInput = {

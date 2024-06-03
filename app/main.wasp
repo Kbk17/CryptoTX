@@ -6,10 +6,10 @@ app OpenSaaS {
   head: [
         "<meta property='og:type' content='website' />",
         "<meta property='og:title' content='BORCASH Exchange' />",
-        "<meta property='og:url' content='https://opensaas.sh' />", 
+        "<meta property='og:url' content='https://borcashdemo-client.fly.dev' />", 
         "<meta property='og:description' content='BORCASH Exchange' />",
-        "<meta property='og:image' content='https://opensaas.sh/public-banner.png' />",
-        "<meta name='twitter:image' content='https://opensaas.sh/public-banner.png' />", 
+        "<meta property='og:image' content='https://borcashdemo-client.fly.dev/assets/baner_crypto-lJpz5o_g.png' />",
+        "<meta name='twitter:image' content='https://borcashdemo-client.fly.dev/assets/baner_crypto-lJpz5o_g.png' />", 
         "<meta name='twitter:image:width' content='800' />",
         "<meta name='twitter:image:height' content='400' />",
         "<meta name='twitter:card' content='summary_large_image' />",
@@ -439,12 +439,17 @@ action generateSumsubToken {
 
 
 // 📚 Queries
+/*
+query getPaginatedAdminTransactionsCSV {
+  fn: import { getPaginatedAdminTransactionsCSV } from "@src/server/queries.js",
+  entities: [Transaction, User, BankDetails, FiatCurrency]
+}
+*/
 
 query getBankDetailsById {
   fn: import { getBankDetailsById } from "@src/server/queries.js",
   entities: [BankDetails, Transaction, User]
 }
-
 
 
 query getPaginatedTransactions {

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Modal from 'react-modal';
 import { getPaginatedAdminTransactions, getBankDetailsById, useQuery } from 'wasp/client/operations';
 import EditTransactionModal from './EditTransactionModal';
 import Loader from '../common/Loader';
 import { FaSearch, FaFilter } from 'react-icons/fa';
+import { CSVLink } from 'react-csv';
 
 Modal.setAppElement('#root');
 
@@ -22,7 +23,7 @@ interface Transaction {
   lastChangeDate: Date;
   lastModifiedByUserId: number;
   lastModifiedByEmail: string;
-  bankDetailsId: number; // Ensure this is included
+  bankDetailsId: number;
 }
 
 interface TransactionsData {
@@ -117,6 +118,27 @@ const AdminTransactionsTable = () => {
     }
   };
 
+  const csvData = useMemo(() => {
+    return data?.transactions || [];
+    
+  }, [data]);
+
+  const headers = [
+    { label: "Transaction ID", key: "transactionId" },
+    { label: "Payment ID", key: "paymentId" },
+    { label: "User Email", key: "userEmail" },
+    { label: "Fiat Amount", key: "fiatAmount" },
+    { label: "Crypto Currency", key: "cryptoCurrency" },
+    { label: "Crypto Amount", key: "cryptoCurrencyAmount" },
+    { label: "Wallet Address", key: "walletAddress" },
+    { label: "Status", key: "status" },
+    { label: "Commission", key: "commission" },
+    { label: "Rate", key: "rate" },
+    { label: "Created At", key: "createdAt" },
+    { label: "Last Change Date", key: "lastChangeDate" },
+    { label: "Last Modified By Email", key: "lastModifiedByEmail" }
+  ];
+
   if (isLoading) return <Loader />;
   if (error) return <div>Error loading transactions: {error.message}</div>;
 
@@ -174,6 +196,7 @@ const AdminTransactionsTable = () => {
                 <option value="New">New</option>
                 <option value="Pending">Pending</option>
                 <option value="Completed">Completed</option>
+                <option value="Returned">Returned</option>
               </select>
             </div>
             <div className="flex flex-col lg:flex-row items-start lg:items-center gap-2">
@@ -322,6 +345,14 @@ const AdminTransactionsTable = () => {
           </div>
         )}
       </div>
+      <CSVLink
+        data={csvData}
+        headers={headers}
+        filename={`returned_transactions_${new Date().toISOString()}.csv`}
+        className="mt-4 inline-block px-4 py-2 bg-primary text-white rounded-md"
+      >
+        Download Returned Transactions CSV
+      </CSVLink>
       <EditTransactionModal
         transaction={selectedTransaction}
         isOpen={modalIsOpen}
