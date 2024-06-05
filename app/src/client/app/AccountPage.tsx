@@ -6,7 +6,6 @@ import { TierIds } from '../../shared/constants';
 import { useState } from 'react';
 import { PencilIcon } from '@heroicons/react/24/solid';
 import { editUserProfile, generateSumsubToken } from 'wasp/client/operations';
-import {SnsWebSdk} from '@sumsub/websdk';
 
 export default function AccountPage({ user }: { user: User }) {
   const [editingField, setEditingField] = useState(null);
@@ -23,9 +22,6 @@ export default function AccountPage({ user }: { user: User }) {
     }
   };
 
-  const loadSumsubSdk = () => {
-
-  };
   const handleVerificationRedirect = async () => {
     try {
       const sumsubResponse = await generateSumsubToken(user.id.toString());

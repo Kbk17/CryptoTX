@@ -544,6 +544,7 @@ job dailyStatsJob {
 
 api sumsubWebhook {
   fn: import { sumsubWebhook } from "@src/apis",
+  entities: [User],
   httpRoute: (POST, "/sumsub/updateApplicant")
 }
 

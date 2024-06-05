@@ -28,6 +28,7 @@ import crypto from 'crypto';
 // These parameters should be used for all requests
 const SUMSUB_APP_TOKEN = process.env.SUMSUB_APP_TOKEN!;
 const SUMSUB_SECRET_KEY = process.env.SUMSUB_SECRET_KEY!;
+const SUMSUB_WH_PRIVATE_KEY = process.env.SUMSUB_WH_PRIVATE_KEY!
 const SUMSUB_BASE_URL = 'https://api.sumsub.com'; 
 
 let config: AxiosRequestConfig = {
@@ -38,14 +39,26 @@ axios.interceptors.request.use(createSignature, function (error) {
   return Promise.reject(error);
 });
 
-// Make sure to specify 'Content-Type' header with value of 'application/json' if you're not sending a body for most of requests
+export function checkDigest(req): boolean {
+  const algo = {
+    'HMAC_SHA1_HEX': 'sha1',
+    'HMAC_SHA256_HEX': 'sha256',
+    'HMAC_SHA512_HEX': 'sha512',
+  }[req.headers['X-Payload-Digest-Alg']];
 
-// This function creates signature for the request as described here: https://developers.sumsub.com/api-reference/#app-tokens
+  if (!algo) {
+    throw new Error('Unsupported algorithm');
+  }
+
+  const calculatedDigest = crypto
+    .createHmac(algo, SUMSUB_WH_PRIVATE_KEY)
+    .update(req.rawBody)
+    .digest('hex');
+
+  return calculatedDigest === req.headers['x-payload-digest'];
+}
 
 function createSignature(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig> {
-  console.log('Creating a signature for the request...');
-  
-
   const ts = Math.floor(Date.now() / 1000);
   const signature = crypto.createHmac('sha256', SUMSUB_SECRET_KEY);
   signature.update(ts + config.method!.toUpperCase() + config.url!);
@@ -68,9 +81,6 @@ function createSignature(config: InternalAxiosRequestConfig): InternalAxiosReque
 
 // https://developers.sumsub.com/api-reference/#creating-an-applicant
 export const generateSumsubToken = async (externalUserId: string, levelName: string = 'basic-kyc-level'): Promise<any> => {
-  console.log("Creating an applicant...");
-  console.log(process.env.SUMSUB_APP_TOKEN);
-
   const method = 'post';
   const url = `/resources/sdkIntegrations/levels/basic-kyc-level/websdkLink`;
   const body = {
@@ -100,52 +110,6 @@ export const generateSumsubToken = async (externalUserId: string, levelName: str
     throw new Error(error.response.data);
   }
 }
-
-
-
-// const generateSignature = (secretKey: string, httpMethod: string, url: string, body: string, timestamp: string) => {
-//   const message = `${httpMethod} ${url} ${body} ${timestamp}`;
-//   const hmac = crypto.createHmac('sha256', secretKey);
-//   hmac.update(message);
-//   return hmac.digest('hex'); // Use 'hex' encoding
-// };
-
-
-
-// const generateSignature = (secretKey: string, httpMethod: string, url: string, body: string, timestamp: string) => {
-//   const message = `${httpMethod} ${url} ${body} ${timestamp}`;
-//   const hmac = crypto.createHmac('sha256', secretKey);
-//   hmac.update(message);
-//   return hmac.digest('base64');
-// };
-
-// export const generateSumsubToken = async (userId: string) => {
-//   const sumsubUrl = 'https://api.sumsub.com/resources/sdkIntegrations/levels/basic-kyc-level/websdkLink';
-//   const httpMethod = 'POST';
-//   const body = JSON.stringify({
-//     externalUserId: userId,
-//   });
-//   const timestamp = Math.floor(Date.now() / 1000).toString();
-//   const signature = generateSignature(SUMSUB_SECRET_KEY, httpMethod, sumsubUrl, body, timestamp);
-
-//   try {
-//     const response = await axios.post(sumsubUrl, body, {
-//       headers: {
-//         'X-App-Token': SUMSUB_API_TOKEN,
-//         'X-App-Access-Sig': signature,
-//         'X-App-Access-Ts': timestamp,
-//         'Content-Type': 'application/json',
-//       },
-//     });
-    
-//     // Handle the response as needed
-//     console.log('Sumsub response:', response.data);
-//     return response.data;
-//   } catch (error) {
-//     console.error('Error making request to Sumsub:', error);
-//     throw new HttpError(500, 'Error interacting with Sumsub API');
-//   }
-// };
 
 async function generatePaymentId(context) {
   // Fetch the latest transaction
@@ -525,6 +489,8 @@ export const deleteTask: DeleteTask<Pick<Task, 'id'>, Task> = async ({ id }, con
 
   return task;
 };
+
+
 
 export const updateUserById: UpdateUserById<{ id: number; data: Partial<User> }, User> = async (
   { id, data },
